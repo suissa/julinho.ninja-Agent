@@ -1,0 +1,68 @@
+{
+  "rabbitmq": {
+    "exchanges": {
+      "agents": {
+        "name": "chatbot.agents",
+        "type": "topic",
+        "options": {
+          "durable": true,
+          "autoDelete": false
+        }
+      },
+      "messages": {
+        "name": "chatbot.messages",
+        "type": "topic",
+        "options": {
+          "durable": true,
+          "autoDelete": false
+        }
+      },
+      "whatsapp": {
+        "name": "whatsapp.message.text",
+        "type": "topic",
+        "options": {
+          "durable": true,
+          "autoDelete": false
+        }
+      }
+    },
+    "queues": {
+      "options": {
+        "durable": true,
+        "autoDelete": false,
+        "exclusive": false
+      },
+      "prefetch": 1
+    },
+    "connection": {
+      "heartbeat": 60,
+      "connectionTimeout": 10000,
+      "reconnectDelay": 5000,
+      "maxReconnectAttempts": 10
+    }
+  },
+  "logging": {
+    "level": "info",
+    "format": "json",
+    "sanitizeUserData": true,
+    "logFile": "./logs/chatbot.log",
+    "maxFileSize": "10MB",
+    "maxFiles": 5
+  },
+  "monitoring": {
+    "enabled": true,
+    "metricsPort": 9090,
+    "healthCheckPort": 8080,
+    "healthCheckPath": "/health"
+  },
+  "security": {
+    "encryptSensitiveData": true,
+    "dataRetentionDays": 30,
+    "auditLogging": true
+  },
+  "performance": {
+    "maxConcurrentSessions": 1000,
+    "messageProcessingTimeout": 5000,
+    "queueProcessingBatchSize": 10
+  }
+}

@@ -55,11 +55,26 @@ export class GlobalMemory implements IGlobalMemory {
   }
 
   // Flow management methods - Implementation in task 3.4
-  getNextAgent(): string | null {
-    if (this.agentsFlow.length > 0) {
-      // Remove and return the first item from the list (FIFO)
-      return this.agentsFlow.shift() || null;
+  getNextAgent(currentStage?: string): string | null {
+    if (!currentStage) {
+      // Se não tem stage atual, retorna o primeiro
+      return DEFAULT_AGENTS_FLOW[0] || null;
     }
+    
+    // Encontrar o índice do stage atual
+    const currentIndex = DEFAULT_AGENTS_FLOW.indexOf(currentStage as any);
+    
+    if (currentIndex === -1) {
+      // Stage atual não encontrado, retorna o primeiro
+      return DEFAULT_AGENTS_FLOW[0] || null;
+    }
+    
+    // Retorna o próximo stage na sequência
+    const nextIndex = currentIndex + 1;
+    if (nextIndex < DEFAULT_AGENTS_FLOW.length) {
+      return DEFAULT_AGENTS_FLOW[nextIndex];
+    }
+    
     return null; // Flow complete
   }
 

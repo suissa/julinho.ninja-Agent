@@ -4,8 +4,8 @@
  */
 
 import { IGlobalMemory } from './interfaces';
-import { ClientData, ClientStage } from '@src/types/client';
-import { SessionData, SessionPersistenceConfig } from '@src/types/session';
+import { ClientData, ClientStage, PatientPhone } from '@src/types/client';
+import { SchedulingData, SessionData, SessionPersistenceConfig } from '@src/types/session';
 import { FileSessionPersistence } from '@src/memory/SessionPersistence';
 import { TimeoutManager, TimeoutConfig } from '@src/memory/TimeoutManager';
 import { ConcurrentSessionManager } from '@src/memory';
@@ -197,9 +197,9 @@ export class GlobalMemory implements IGlobalMemory {
    * @param number - User's phone number
    * @returns Scheduling data object or null if not found
    */
-  getSchedulingData(number: string): any {
+  getSchedulingData(number: PatientPhone): SchedulingData | null {
     try {
-      const clientData = this.clientData.get(number);
+      const clientData = this.clientData.get(number.toString());
       if (!clientData) return null;
 
       return {

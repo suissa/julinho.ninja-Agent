@@ -168,7 +168,7 @@ export class TimeoutManager {
    * Clear all timeouts (for shutdown)
    */
   clearAllTimeouts(): void {
-    for (const [number] of this.activeTimeouts) {
+    for (const [number] of Array.from(this.activeTimeouts.entries())) {
       this.clearTimeout(number);
     }
     this.logger.info('All timeouts cleared');

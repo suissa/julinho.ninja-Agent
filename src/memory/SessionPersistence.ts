@@ -4,17 +4,17 @@
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { SessionData, SessionPersistenceConfig, SerializableSessionData, SessionManager } from '@typez/session';
-import { ClientData, ClientStage, PatientBirthDate, PatientEmail, PatientName, PatientPhone } from '@typez/client';
-import { Logger } from '@src/utils/logger';
-import { TimeTimestampUnix, TimeDurationMS } from '@tys/shared';
-import { PatientCpf } from '@tys/shared';  
+import { SessionData, SessionPersistenceConfig, SerializableSessionData, SessionManager } from '../types/session';
+import { ClientData, ClientStage, PatientBirthDate, PatientName, PatientPhone } from '../types/client';
+import { Logger } from '../utils/logger';
+import { TimeTimestampUnix, TimeDurationMS, PatientEmail } from '../types/shared';
+import { PatientCpf } from '../types/shared';  
 export class FileSessionPersistence implements SessionManager {
   private config: SessionPersistenceConfig;
   private logger: Logger;
   private cleanupTimer?: NodeJS.Timeout | undefined;
   private sessionsDir: string;
-
+  private readonly sanitizePhone = (phone: string): string => phone.replace(/[^0-9]/g, '');
   constructor(config: SessionPersistenceConfig) {
     this.config = config;
     this.logger = Logger.getInstance();
@@ -197,11 +197,11 @@ export class FileSessionPersistence implements SessionManager {
     return {
       number: sessionData.number,
       clientData: {
-        number: sessionData.clientData.number,
+        number: PatientPhone.make(sessionData.clientData.number),
         name: sessionData.clientData.name,
         cpf: sessionData.clientData.cpf,
         email: sessionData.clientData.email,
-        birthDate: sessionData.clientData.birthDate,
+        birthDate: sessionData.clientData.birthDate?.toString() || undefined,
         currentAgent: sessionData.clientData.currentAgent,
         startTime: sessionData.clientData.startTime.toISOString(),
         lastActivity: sessionData.clientData.lastActivity.toISOString()
@@ -225,27 +225,27 @@ export class FileSessionPersistence implements SessionManager {
     return {
       number: serializable.number,
       clientData: {
-        number: serializable.clientData.number,
-        name: serializable.clientData.name,
-        cpf: serializable.clientData.cpf,
-        email: serializable.clientData.email,
-        birthDate: PatientBirthDate.make(serializable.clientData.birthDate),
-        currentAgent: serializable.clientData.currentAgent,
-        startTime: new Date(serializable.clientData.startTime),
-        lastActivity: new Date(serializable.clientData.lastActivity)
+        number: PatientPhone.make(this.sanitizePhone(serializable.clientData.number)),
+        name: serializable.clientData.name as any,
+        cpf: serializable.clientData.cpf as any,
+        email: serializable.clientData.email as any,
+        birthDate: serializable.clientData.birthDate as any,
+        currentAgent: serializable.clientData.currentAgent as string,
+        startTime: new Date(TimeTimestampUnix.of(Number(serializable.clientData.startTime))),
+        lastActivity: new Date(TimeTimestampUnix.of(Number(serializable.clientData.lastActivity))),
       },
       clientStage: {
-        number: serializable.clientStage.number,
+        number: PatientPhone.make(this.sanitizePhone(serializable.clientStage.number)),
         currentStage: serializable.clientStage.currentStage,
         visitedStages: new Set(serializable.clientStage.visitedStages),
         stageErrors: new Map(serializable.clientStage.stageErrors),
-        lastActivity: new Date(serializable.clientStage.lastActivity)
+        lastActivity: new Date(TimeTimestampUnix.of(Number(serializable.clientStage.lastActivity))),
       },
       agentsFlow: [...serializable.agentsFlow],
-      lastMessageSent: serializable.lastMessageSent,
-      sessionTimeout: TimeDurationMS.of(Number(serializable.sessionTimeout)),
+      lastMessageSent: TimeTimestampUnix.of(Number(serializable.lastMessageSent)) as TimeTimestampUnix,
+      sessionTimeout: TimeDurationMS.of(Number(serializable.sessionTimeout)) as TimeDurationMS,
       createdAt: new Date(TimeTimestampUnix.of(Number(serializable.createdAt))),
-      updatedAt: new Date(TimeTimestampUnix.of(Number(serializable.updatedAt)))
+      updatedAt: new Date(TimeTimestampUnix.of(Number(serializable.updatedAt)) as TimeTimestampUnix) as Date
     };
   }
 }

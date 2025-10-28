@@ -5,12 +5,14 @@
 
 import { IGlobalMemory } from './interfaces';
 import { ClientData, ClientStage, PatientPhone } from '../types/client';
-import { SchedulingData, SessionData, SessionPersistenceConfig } from '../types/session';
+import { SessionData, SessionPersistenceConfig } from '../types/session';
 import { FileSessionPersistence } from '../memory/SessionPersistence';
 import { TimeoutManager, TimeoutConfig } from '../memory/TimeoutManager';
 import { ConcurrentSessionManager } from '../memory';
 import { Logger } from '../utils/logger';
 import { DEFAULT_AGENTS_FLOW, SCHEDULING_FLOWS, TIMEOUTS } from '../types/constants';
+import { SchedulingData } from '../types/scheduling';
+import { TimeDurationMS, TimeTimestampUnix } from '../types/shared';
 
 export class GlobalMemory implements IGlobalMemory {
   public agentsFlow: string[] = []; // Mantido para compatibilidade
@@ -40,8 +42,8 @@ export class GlobalMemory implements IGlobalMemory {
       enabled: true,
       storageType: 'file',
       filePath: './sessions',
-      cleanupInterval: 5 * 60 * 1000, // 5 minutes
-      sessionTimeout: 30 * 60 * 1000 // 30 minutes
+      cleanupInterval: TimeDurationMS.make(5 * 60 * 1000), // 5 minutes
+      sessionTimeout: TimeDurationMS.make(30 * 60 * 1000) // 30 minutes
     };
 
     this.sessionPersistence = new FileSessionPersistence(sessionConfig || defaultSessionConfig);
@@ -202,7 +204,7 @@ export class GlobalMemory implements IGlobalMemory {
       const clientData = this.clientData.get(number.toString());
       if (!clientData) return null;
 
-      return {
+      return <SchedulingData>{
         schedulingChoice: clientData.schedulingChoice,
         schedulingFlowType: clientData.schedulingFlowType,
         dynamicAgentsFlow: clientData.dynamicAgentsFlow,
@@ -266,7 +268,7 @@ export class GlobalMemory implements IGlobalMemory {
     // Initialize client data if not exists
     if (!this.clientData.has(number)) {
       const clientData: ClientData = {
-        number,
+        number: PatientPhone.make(number),
         startTime: new Date(),
         lastActivity: new Date()
       };
@@ -276,7 +278,7 @@ export class GlobalMemory implements IGlobalMemory {
     // Initialize client stage if not exists
     if (!this.clientStages.has(number)) {
       const clientStage: ClientStage = {
-        number,
+        number: PatientPhone.make(number),
         currentStage: 'patient.name', // Start with first agent
         visitedStages: new Set(),
         stageErrors: new Map(),
@@ -309,7 +311,7 @@ export class GlobalMemory implements IGlobalMemory {
     if (!clientData) {
       // Create new client data if doesn't exist
       clientData = {
-        number,
+        number: PatientPhone.make(number),
         startTime: new Date(),
         lastActivity: new Date()
       };
@@ -372,7 +374,7 @@ export class GlobalMemory implements IGlobalMemory {
     if (!clientStage) {
       // Create new client stage if doesn't exist
       clientStage = {
-        number,
+        number: PatientPhone.make(number),
         currentStage: stage,
         visitedStages: new Set(),
         stageErrors: new Map(),
@@ -400,7 +402,7 @@ export class GlobalMemory implements IGlobalMemory {
     if (!clientStage) {
       // Create new client stage if doesn't exist
       clientStage = {
-        number,
+        number: PatientPhone.make(number),
         currentStage: stage,
         visitedStages: new Set([stage]),
         stageErrors: new Map(),
@@ -428,7 +430,7 @@ export class GlobalMemory implements IGlobalMemory {
     if (!clientStage) {
       // Create new client stage if doesn't exist
       clientStage = {
-        number,
+        number: PatientPhone.make(number),
         currentStage: stage,
         visitedStages: new Set(),
         stageErrors: new Map([[stage, 1]]),
@@ -453,13 +455,13 @@ export class GlobalMemory implements IGlobalMemory {
   }
 
   // Message control methods - Seguindo especificação canSendWhatsAppMessage (POR AGENTE)
-  canSendMessageForAgent(number: string, agentRoutingKey: string): boolean {
-    if (!number || number.trim() === '') {
+  canSendMessageForAgent(number: PatientPhone, agentRoutingKey: string): boolean {
+    if (!number.toString() || number.toString().trim() === '') {
       console.log(`❌ [GlobalMemory] canSendMessageForAgent: número vazio`);
       return false;
     }
 
-    const clientData = this.clientData.get(number);
+    const clientData = this.clientData.get(number.toString());
     if (!clientData) {
       console.log(`✅ [GlobalMemory] canSendMessageForAgent: novo cliente ${number}, pode enviar`);
       return true; // Novo cliente, pode enviar
@@ -468,7 +470,7 @@ export class GlobalMemory implements IGlobalMemory {
     // Verificar flag MESSAGE_SENT por agente conforme especificação
     if (!clientData.messageSentByAgent) {
       clientData.messageSentByAgent = new Map();
-      this.clientData.set(number, clientData);
+      this.clientData.set(number.toString(), clientData);
     }
 
     const messageSentForAgent = clientData.messageSentByAgent.get(agentRoutingKey) || false;
@@ -478,23 +480,23 @@ export class GlobalMemory implements IGlobalMemory {
   }
 
   // Compatibilidade com método antigo
-  canSendMessage(number: string): boolean {
+  canSendMessage(number: PatientPhone): boolean {
     // Usar current stage como agente
-    const currentStage = this.getCurrentStage(number);
+    const currentStage = this.getCurrentStage(number.toString());
     if (!currentStage) return true;
     return this.canSendMessageForAgent(number, currentStage);
   }
 
-  markMessageSentForAgent(number: string, agentRoutingKey: string): void {
-    if (!number || number.trim() === '') {
+  markMessageSentForAgent(number: PatientPhone, agentRoutingKey: string): void {
+    if (!number.toString() || number.toString().trim() === '') {
       throw new Error('Phone number cannot be empty');
     }
 
     // Marcar flag MESSAGE_SENT como true para este agente conforme especificação
-    let clientData = this.clientData.get(number);
+    let clientData = this.clientData.get(number.toString());
     if (!clientData) {
       clientData = {
-        number,
+        number: PatientPhone.make(number.toString()),
         startTime: new Date(),
         lastActivity: new Date(),
         messageSentByAgent: new Map([[agentRoutingKey, true]])
@@ -507,28 +509,40 @@ export class GlobalMemory implements IGlobalMemory {
       clientData.lastActivity = new Date();
     }
 
-    this.clientData.set(number, clientData);
-    this.lastMessageSent.set(number, Date.now());
+    this.clientData.set(number.toString(), clientData);
+    this.lastMessageSent.set(number.toString(), Date.now());
     console.log(`✅ [GlobalMemory] MESSAGE_SENT marcada como true para agente ${agentRoutingKey} e cliente ${number}`);
   }
 
   // Compatibilidade com método antigo
-  markMessageSent(number: string): void {
-    const currentStage = this.getCurrentStage(number);
+  markMessageSent(number: PatientPhone): void {
+    const currentStage = this.getCurrentStage(number.toString());
     if (currentStage) {
       this.markMessageSentForAgent(number, currentStage);
     }
   }
 
   // Resetar flag MESSAGE_SENT quando agente muda
-  resetMessageSentFlag(number: string): void {
-    const clientData = this.clientData.get(number);
+  resetMessageSentFlag(phone: PatientPhone): void {
+    const clientData = this.clientData.get(phone.toString());
+    const number = phone.toString();
     if (clientData) {
-      console.log(`🔄 [GlobalMemory] Resetando MESSAGE_SENT flag para ${number} (era: ${clientData.messageSent})`);
-      clientData.messageSent = false;
+      // Reset all flags related to messageSentByAgent if present
+      if (clientData.messageSentByAgent && clientData.messageSentByAgent instanceof Map) {
+        clientData.messageSentByAgent.forEach((_, agent) => {
+          clientData.messageSentByAgent?.set(agent, false);
+        });
+        console.log(`🔄 [GlobalMemory] Resetando MESSAGE_SENT flags para todos agentes de ${number}`);
+      }
+
+      // Reset legacy 'messageSent' if it exists for backward compatibility
+      if ('messageSent' in clientData) {
+        console.log(`🔄 [GlobalMemory] Resetando MESSAGE_SENT flag legado para ${number} (era: ${(clientData as any).messageSent})`);
+        (clientData as any).messageSent = false;
+      }
       clientData.lastActivity = new Date();
       this.clientData.set(number, clientData);
-      console.log(`✅ [GlobalMemory] MESSAGE_SENT flag resetada para ${number} (agora: ${clientData.messageSent})`);
+      console.log(`✅ [GlobalMemory] MESSAGE_SENT flag resetada para ${number}`);
     } else {
       console.log(`❌ [GlobalMemory] Cliente ${number} não encontrado para resetar MESSAGE_SENT flag`);
     }
@@ -542,6 +556,7 @@ export class GlobalMemory implements IGlobalMemory {
     this.clientData.clear();
     this.clientStages.clear();
     this.lastMessageSent.clear();
+    this.userFlows.clear();
 
     // Reset to default flow
     this.resetAgentsFlow();
@@ -560,10 +575,10 @@ export class GlobalMemory implements IGlobalMemory {
     this.logger.info('Session persistence and concurrent session manager shutdown');
   }
 
-  async saveSession(number: string): Promise<void> {
+  async saveSession(number: PatientPhone): Promise<void> {
     try {
-      const clientData = this.clientData.get(number);
-      const clientStage = this.clientStages.get(number);
+      const clientData = this.clientData.get(number.toString());
+      const clientStage = this.clientStages.get(number.toString());
 
       if (!clientData || !clientStage) {
         this.logger.warn(`Cannot save session for ${number}: missing data`);
@@ -571,16 +586,16 @@ export class GlobalMemory implements IGlobalMemory {
       }
 
       const sessionData: SessionData = {
-        number,
+        number: number.toString(),
         clientData,
         clientStage,
         agentsFlow: [...this.agentsFlow],
-        lastMessageSent: this.lastMessageSent.get(number),
+        lastMessageSent: this.lastMessageSent.get(number.toString()) as TimeTimestampUnix,
         createdAt: clientData.startTime,
         updatedAt: new Date()
       };
 
-      await this.sessionPersistence.saveSession(number, sessionData);
+      await this.sessionPersistence.saveSession(number.toString(), sessionData);
       this.logger.debug(`Session saved for phone: ${number}`);
     } catch (error) {
       this.logger.error(`Failed to save session for ${number}:`, error);
@@ -659,19 +674,19 @@ export class GlobalMemory implements IGlobalMemory {
   // Auto-save session data when client data changes
   async setClientDataWithPersistence(number: string, field: string, value: any): Promise<void> {
     this.setClientData(number, field, value);
-    await this.saveSession(number);
+    await this.saveSession(PatientPhone.make(number));
   }
 
   // Auto-save session data when stage changes
   async setCurrentStageWithPersistence(number: string, stage: string): Promise<void> {
     this.setCurrentStage(number, stage);
-    await this.saveSession(number);
+    await this.saveSession(PatientPhone.make(number));
   }
 
   // Auto-save session data when stage is marked as visited
   async markStageAsVisitedWithPersistence(number: string, stage: string): Promise<void> {
     this.markStageAsVisited(number, stage);
-    await this.saveSession(number);
+    await this.saveSession(PatientPhone.make(number));
   }
 
   // Timeout management methods - Implementation in task 8.2

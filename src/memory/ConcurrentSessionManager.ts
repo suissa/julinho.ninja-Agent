@@ -3,7 +3,7 @@
  */
 
 import { IGlobalMemory } from './interfaces';
-import { Logger } from '@src/utils/logger';
+import { Logger } from '../utils/logger';
 
 export interface SessionLock {
   number: string;
@@ -117,7 +117,7 @@ export class ConcurrentSessionManager {
     const now = Date.now();
     const validLocks: SessionLock[] = [];
     
-    for (const [key, lock] of this.activeLocks.entries()) {
+    for (const [key, lock] of Array.from(this.activeLocks.entries())) {
       if ((now - lock.timestamp) < lock.timeout) {
         validLocks.push(lock);
       } else {
@@ -135,7 +135,7 @@ export class ConcurrentSessionManager {
     const now = Date.now();
     let cleaned = 0;
     
-    for (const [key, lock] of this.activeLocks.entries()) {
+    for (const [key, lock] of Array.from(this.activeLocks.entries())) {
       if ((now - lock.timestamp) >= lock.timeout) {
         this.activeLocks.delete(key);
         cleaned++;
@@ -154,7 +154,7 @@ export class ConcurrentSessionManager {
     const now = Date.now();
     let active = 0;
     
-    for (const lock of this.activeLocks.values()) {
+    for (const lock of Array.from(this.activeLocks.values())) {
       if ((now - lock.timestamp) < lock.timeout) {
         active++;
       }
@@ -256,7 +256,7 @@ export class ConcurrentSessionManager {
 
   getAllLockedSessions(): string[] {
     const lockedSessions: string[] = [];
-    for (const [key, lock] of this.activeLocks.entries()) {
+    for (const [key, lock] of Array.from(this.activeLocks.entries())) {
       const [number] = key.split(':');
       if (!lockedSessions.includes(number)) {
         lockedSessions.push(number);
@@ -272,7 +272,7 @@ export class ConcurrentSessionManager {
 
   async cleanupSession(number: string): Promise<void> {
     // Release all locks for this session
-    for (const [key, lock] of this.activeLocks.entries()) {
+    for (const [key, lock] of Array.from(this.activeLocks.entries())) {
       if (key.startsWith(`${number}:`)) {
         this.activeLocks.delete(key);
       }

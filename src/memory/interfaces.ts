@@ -11,8 +11,8 @@ export interface IGlobalMemory {
   clientStages: Map<string, ClientStage>;
   lastMessageSent: Map<string, number>; // number -> timestamp
   
-  // Pega o primeiro agente da fila e remove da lista (FIFO)
-  getNextAgent(): string | null;
+  // Pega o primeiro agente da fila POR USUÁRIO e remove da lista (FIFO)
+  getNextAgent(number?: string): string | null;
   getNextAgentByStage(currentStage: string): string | null;
   
   // Dynamic flow management for scheduling
@@ -36,10 +36,13 @@ export interface IGlobalMemory {
   markStageAsError(number: string, stage: string): void;
   getStageErrorCount(number: string, stage: string): number;
   
-  // Controle de mensagens duplicadas - Seguindo especificação canSendWhatsAppMessage
+  // Controle de mensagens duplicadas - Seguindo especificação canSendWhatsAppMessage (POR AGENTE)
   canSendMessage(number: string): boolean;
+  canSendMessageForAgent(number: string, agentRoutingKey: string): boolean;
   markMessageSent(number: string): void;
+  markMessageSentForAgent(number: string, agentRoutingKey: string): void;
   resetMessageSentFlag(number: string): void;
+  getUserFlow(number: string): string[] | null;
   
   // Limpa toda a memória global
   clear(): void;

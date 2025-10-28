@@ -234,12 +234,12 @@ export abstract class BaseAgent implements IAgent, AgentSpecification, AgentFlow
   }
 
   /**
-   * Obtém o próximo agent no fluxo
+   * Obtém o próximo agent no fluxo POR USUÁRIO
    */
-  public getNextAgent(): string | null {
-    // Para dados do paciente, usar FIFO original
+  public getNextAgent(number: string): string | null {
+    // Para dados do paciente, usar FIFO POR USUÁRIO
     if (['patient.name', 'patient.cpf', 'patient.birthDate', 'patient.email'].includes(this.routingKey)) {
-      return this.globalMemory.getNextAgent(); // FIFO
+      return this.globalMemory.getNextAgent(number); // FIFO POR USUÁRIO
     }
     // Para agendamento, usar lógica específica do agente
     return null;
@@ -271,14 +271,15 @@ export abstract class BaseAgent implements IAgent, AgentSpecification, AgentFlow
       return false;
     }
 
-    // 3. Verificar se consegue pegar routingKey do próximo Agent
-    const nextAgentRoutingKey = this.getNextAgent();
-    if (!nextAgentRoutingKey) {
+    // 3. Verificar se consegue pegar routingKey do próximo Agent (SEM CONSUMIR A FILA)
+    // Vamos verificar se há próximo agente sem remover da fila
+    const userFlow = this.globalMemory.getUserFlow(number);
+    if (!userFlow || userFlow.length === 0) {
       console.log(`✅ [${this.agentName}] Fluxo completo - não há próximo agente para ${number}`);
       return true; // Pode "ativar" (finalizar fluxo)
     }
 
-    console.log(`✅ [${this.agentName}] Pode ativar próximo agente ${nextAgentRoutingKey} para ${number}`);
+    console.log(`✅ [${this.agentName}] Pode ativar próximo agente ${userFlow[0]} para ${number}`);
     return true;
   }
 
@@ -295,7 +296,7 @@ export abstract class BaseAgent implements IAgent, AgentSpecification, AgentFlow
       return;
     }
 
-    const nextAgentRoutingKey = this.getNextAgent();
+    const nextAgentRoutingKey = this.getNextAgent(number);
 
     console.log(`🔄 [${this.agentName}] Flow transition: ${this.routingKey} → ${nextAgentRoutingKey || 'COMPLETED'} for ${number}`);
 
@@ -312,7 +313,11 @@ export abstract class BaseAgent implements IAgent, AgentSpecification, AgentFlow
         console.error(`❌ [${this.agentName}] Erro no unbind:`, error);
       }
 
-      // 2. Atualizar stage atual (thread-safe)
+      // 2. Resetar flag MESSAGE_SENT ANTES de ativar próximo agente
+      this.globalMemory.resetMessageSentFlag(number);
+      console.log(`🔄 [${this.agentName}] MESSAGE_SENT flag resetada para ${number}`);
+
+      // 3. Atualizar stage atual (thread-safe)
       try {
         await this.setCurrentStageSafe(number, nextAgentRoutingKey);
         console.log(`📝 [${this.agentName}] Stage updated to ${nextAgentRoutingKey} for ${number}`);
@@ -321,9 +326,6 @@ export abstract class BaseAgent implements IAgent, AgentSpecification, AgentFlow
         return;
       }
 
-      // 3. Resetar flag MESSAGE_SENT para próximo agente
-      this.globalMemory.resetMessageSentFlag(number);
-
       // 4. Criar comando de ativação
       const activationCommand: AgentActivationCommand = {
         number: number,
@@ -331,7 +333,10 @@ export abstract class BaseAgent implements IAgent, AgentSpecification, AgentFlow
         timestamp: Date.now()
       };
 
-      // 5. Enviar comando para próximo agent
+      // 5. Pequeno delay para garantir que stage foi atualizado
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // 6. Enviar comando para próximo agent
       await this.sdkRabbitmq.publish('chatbot.agents', nextAgentRoutingKey, activationCommand);
 
       console.log(`✅ [${this.agentName}] Next agent ${nextAgentRoutingKey} activated for ${number}`);
@@ -362,7 +367,7 @@ export abstract class BaseAgent implements IAgent, AgentSpecification, AgentFlow
    * ESPECIFICAÇÃO canSendWhatsAppMessage
    * Verifica se o agente pode enviar uma mensagem para o WhatsApp do usuário
    * Precisa estar ativado E estar ouvindo a routingKey do WhatsApp do usuário
-   * E validar na memória se é o agente atual E principalmente se a flag MESSAGE_SENT for false
+   * E validar na memória se é o agente atual E principalmente se a flag MESSAGE_SENT for false PARA ESTE AGENTE
    * Se tudo OK → retorna true
    */
   protected canSendWhatsAppMessage(number: string): boolean {
@@ -377,10 +382,10 @@ export abstract class BaseAgent implements IAgent, AgentSpecification, AgentFlow
       return false;
     }
 
-    // 2. Verificar flag MESSAGE_SENT (deve ser false para poder enviar)
-    const canSend = this.globalMemory.canSendMessage(number);
+    // 2. Verificar flag MESSAGE_SENT para ESTE AGENTE (deve ser false para poder enviar)
+    const canSend = this.globalMemory.canSendMessageForAgent(number, this.routingKey);
     if (!canSend) {
-      console.log(`❌ [${this.agentName}] MESSAGE_SENT flag impede envio para ${number}`);
+      console.log(`❌ [${this.agentName}] MESSAGE_SENT flag impede envio para ${number} (agente: ${this.routingKey})`);
       return false;
     }
 
@@ -416,8 +421,8 @@ export abstract class BaseAgent implements IAgent, AgentSpecification, AgentFlow
         text: message
       });
 
-      // ESPECIFICAÇÃO: Marcar MESSAGE_SENT como true após enviar
-      this.globalMemory.markMessageSent(number);
+      // ESPECIFICAÇÃO: Marcar MESSAGE_SENT como true para ESTE AGENTE após enviar
+      this.globalMemory.markMessageSentForAgent(number, this.routingKey);
 
       const duration = Date.now() - startTime;
       console.log(`📤 [${this.agentName}] Message sent to ${number}: "${message}"`);

@@ -11,13 +11,16 @@ import { FileSessionPersistence } from './SessionPersistence';
 import { TimeoutManager, TimeoutConfig } from './TimeoutManager';
 import { ConcurrentSessionManager } from './ConcurrentSessionManager';
 import { Logger } from '../utils/logger';
+import { clear } from 'console';
 
 export class GlobalMemory implements IGlobalMemory {
-  public agentsFlow: string[] = [];
+  public agentsFlow: string[] = []; // Mantido para compatibilidade
   public clientesVisitantes: Set<string> = new Set();
   public clientData: Map<string, ClientData> = new Map();
   public clientStages: Map<string, ClientStage> = new Map();
   public lastMessageSent: Map<string, number> = new Map();
+
+
 
   private sessionPersistence: FileSessionPersistence;
   private timeoutManager: TimeoutManager;
@@ -54,14 +57,29 @@ export class GlobalMemory implements IGlobalMemory {
     this.resetAgentsFlow();
   }
 
-  // Flow management methods - Implementation in task 3.4 (seguindo especificação FIFO)
-  getNextAgent(): string | null {
-    // Para dados do paciente: FIFO (remove da lista)
-    // Para agendamento: usa fluxo dinâmico por usuário
-    if (this.agentsFlow.length > 0) {
-      return this.agentsFlow.shift() || null;
+  // Flow management methods - CORREÇÃO: FIFO POR USUÁRIO
+  getNextAgent(number?: string): string | null {
+    if (!number) {
+      // Fallback para compatibilidade (não deveria ser usado)
+      console.warn('⚠️ getNextAgent chamado sem número do usuário!');
+      return null;
     }
-    return null; // Flow complete
+
+    // Verificar se usuário tem fila própria
+    let userFlow = this.userFlows.get(number);
+
+    if (!userFlow) {
+      // Criar fila nova para o usuário
+      userFlow = [...DEFAULT_AGENTS_FLOW];
+      this.userFlows.set(number, userFlow);
+      console.log(`🆕 [GlobalMemory] Nova fila criada para ${number}: ${userFlow.join(' → ')}`);
+    }
+
+    // FIFO por usuário
+    const nextAgent = userFlow.shift() || null;
+    console.log(`🔄 [GlobalMemory] getNextAgent(${number}): ${nextAgent}, restante: [${userFlow.join(', ')}]`);
+
+    return nextAgent;
   }
 
   /**
@@ -261,6 +279,26 @@ export class GlobalMemory implements IGlobalMemory {
       };
       this.clientStages.set(number, clientStage);
     }
+
+    // CORREÇÃO: Criar fila individual para o usuário
+    if (!this.userFlows.has(number)) {
+      const userFlow = [...DEFAULT_AGENTS_FLOW];
+      this.userFlows.set(number, userFlow);
+      console.log(`🆕 [GlobalMemory] Fila individual criada para ${number}: ${userFlow.join(' → ')}`);
+    }
+  }
+
+    // Initialize client stage if not exists
+    if (!this.clientStages.has(number)) {
+      const clientStage: ClientStage = {
+        number,
+        currentStage: 'patient.name', // Start with first agent
+        visitedStages: new Set(),
+        stageErrors: new Map(),
+        lastActivity: new Date()
+      };
+      this.clientStages.set(number, clientStage);
+    }
   }
 
   hasClient(number: string): boolean {
@@ -418,50 +456,85 @@ export class GlobalMemory implements IGlobalMemory {
     return clientStage.stageErrors.get(stage) || 0;
   }
 
-  // Message control methods - Seguindo especificação canSendWhatsAppMessage
-  canSendMessage(number: string): boolean {
+  // Message control methods - Seguindo especificação canSendWhatsAppMessage (POR AGENTE)
+  canSendMessageForAgent(number: string, agentRoutingKey: string): boolean {
     if (!number || number.trim() === '') {
+      console.log(`❌ [GlobalMemory] canSendMessageForAgent: número vazio`);
       return false;
     }
 
     const clientData = this.clientData.get(number);
     if (!clientData) {
+      console.log(`✅ [GlobalMemory] canSendMessageForAgent: novo cliente ${number}, pode enviar`);
       return true; // Novo cliente, pode enviar
     }
 
-    // Verificar flag MESSAGE_SENT conforme especificação
-    return !clientData.messageSent; // Se messageSent é false, pode enviar
+    // Verificar flag MESSAGE_SENT por agente conforme especificação
+    if (!clientData.messageSentByAgent) {
+      clientData.messageSentByAgent = new Map();
+      this.clientData.set(number, clientData);
+    }
+
+    const messageSentForAgent = clientData.messageSentByAgent.get(agentRoutingKey) || false;
+    const canSend = !messageSentForAgent;
+    console.log(`🔍 [GlobalMemory] canSendMessageForAgent ${agentRoutingKey} para ${number}: messageSent=${messageSentForAgent}, canSend=${canSend}`);
+    return canSend; // Se messageSent é false para este agente, pode enviar
   }
 
-  markMessageSent(number: string): void {
+  // Compatibilidade com método antigo
+  canSendMessage(number: string): boolean {
+    // Usar current stage como agente
+    const currentStage = this.getCurrentStage(number);
+    if (!currentStage) return true;
+    return this.canSendMessageForAgent(number, currentStage);
+  }
+
+  markMessageSentForAgent(number: string, agentRoutingKey: string): void {
     if (!number || number.trim() === '') {
       throw new Error('Phone number cannot be empty');
     }
 
-    // Marcar flag MESSAGE_SENT como true conforme especificação
+    // Marcar flag MESSAGE_SENT como true para este agente conforme especificação
     let clientData = this.clientData.get(number);
     if (!clientData) {
       clientData = {
         number,
         startTime: new Date(),
         lastActivity: new Date(),
-        messageSent: true
+        messageSentByAgent: new Map([[agentRoutingKey, true]])
       };
     } else {
-      clientData.messageSent = true;
+      if (!clientData.messageSentByAgent) {
+        clientData.messageSentByAgent = new Map();
+      }
+      clientData.messageSentByAgent.set(agentRoutingKey, true);
       clientData.lastActivity = new Date();
     }
-    
+
     this.clientData.set(number, clientData);
     this.lastMessageSent.set(number, Date.now());
+    console.log(`✅ [GlobalMemory] MESSAGE_SENT marcada como true para agente ${agentRoutingKey} e cliente ${number}`);
+  }
+
+  // Compatibilidade com método antigo
+  markMessageSent(number: string): void {
+    const currentStage = this.getCurrentStage(number);
+    if (currentStage) {
+      this.markMessageSentForAgent(number, currentStage);
+    }
   }
 
   // Resetar flag MESSAGE_SENT quando agente muda
   resetMessageSentFlag(number: string): void {
     const clientData = this.clientData.get(number);
     if (clientData) {
+      console.log(`🔄 [GlobalMemory] Resetando MESSAGE_SENT flag para ${number} (era: ${clientData.messageSent})`);
       clientData.messageSent = false;
+      clientData.lastActivity = new Date();
       this.clientData.set(number, clientData);
+      console.log(`✅ [GlobalMemory] MESSAGE_SENT flag resetada para ${number} (agora: ${clientData.messageSent})`);
+    } else {
+      console.log(`❌ [GlobalMemory] Cliente ${number} não encontrado para resetar MESSAGE_SENT flag`);
     }
   }
 

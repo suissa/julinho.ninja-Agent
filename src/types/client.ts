@@ -12,8 +12,8 @@ export interface ClientData {
   startTime: Date;
   lastActivity: Date;
   
-  // Control flags
-  messageSent?: boolean | undefined; // Flag MESSAGE_SENT conforme especificação
+  // Control flags - MESSAGE_SENT por agente
+  messageSentByAgent?: Map<string, boolean> | undefined; // Flag MESSAGE_SENT por agente conforme especificação
   
   // Scheduling fields
   schedulingChoice?: string | undefined;

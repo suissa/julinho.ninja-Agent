@@ -135,21 +135,13 @@ export class GreetingAgent {
 
   // Send message to WhatsApp
   private async sendToWhatsApp(number: string, message: string): Promise<void> {
-    // Check if we can send message (prevent duplicate messages)
-    if (!this.globalMemory.canSendMessage(number)) {
-      console.log(`GreetingAgent: Cannot send message to ${number}, too recent message sent.`);
-      return;
-    }
-    
+    // GreetingAgent pode sempre enviar mensagens (não tem restrições de timing)
     // Send message to WhatsApp
-    await this.sdkRabbitmq.publish(SystemAgentName.make('whatsapp'), SystemRoutingKey.make('send'), {
+    await this.sdkRabbitmq.publish('whatsapp.message.text', 'send', {
       number: number,
       text: message
     });
-    
-    // Mark message as sent with timestamp
-    this.globalMemory.markMessageSent(number);
-    
+
     console.log(`GreetingAgent: Message sent to ${number}: ${message}`);
   }
 }

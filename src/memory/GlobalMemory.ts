@@ -197,8 +197,8 @@ export class GlobalMemory implements IGlobalMemory {
   }
 
   resetAgentsFlow(): void {
-    // Reset to complete flow sequence (patient data + scheduling)
-    this.agentsFlow = [...COMPLETE_FLOW];
+    // Reset to default agent flow sequence (patient data only)
+    this.agentsFlow = [...DEFAULT_AGENTS_FLOW];
   }
 
   /**

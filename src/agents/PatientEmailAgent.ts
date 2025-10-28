@@ -39,4 +39,6 @@ export class PatientEmailAgent extends BaseAgent {
   getDefaultValueForErrors(): string {
     return DEFAULT_VALUES.EMAIL;
   }
+
+
 }

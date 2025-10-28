@@ -2,86 +2,107 @@
  * System constants for exchanges, routing keys, and configuration
  */
 
-import { PatientCpf, PatientEmail, TimeDurationMS, MetricsRetryCount } from './shared';
+import { PatientCpf, PatientEmail, TimeDurationMS, MetricsRetryCount } from '@tys/shared';
 
-/**
- * RabbitMQ Exchange names
- */
+// Tipagem Semântica Atômica - Inline Implementation (Tipos únicos para constants)
+// Sistema de branding sem runtime overhead
+declare const __brand: unique symbol;
+type Brand<T, Name extends string> = T & { readonly [__brand]: Name };
+
+function STAMP<Name extends string>() {
+  return {
+    of: <T>(v: T) => v as Brand<T, Name>,
+    un: <T>(v: Brand<T, Name>) => v as unknown as T,
+  };
+}
+
+// Tipos Semânticos para System Domain (Exchanges/Routing)
+export type SystemExchangeName = Brand<string, "system.exchange.name">;
+export type SystemRoutingKey = Brand<string, "system.routing.key">;
+export type SystemAgentName = Brand<string, "system.agent.name">;
+
+// Implementações dos tipos únicos
+const SystemExchangeNameStamp = STAMP<"system.exchange.name">();
+const SystemRoutingKeyStamp = STAMP<"system.routing.key">();
+const SystemAgentNameStamp = STAMP<"system.agent.name">();
+
+export const SystemExchangeName = (() => ({
+  of: (v: unknown): SystemExchangeName => {
+    const s = String(v);
+    if (!s || s.trim().length === 0) throw new TypeError("nome do exchange não pode ser vazio");
+    if (!/^[a-zA-Z][a-zA-Z0-9._-]*$/.test(s)) throw new TypeError("nome do exchange deve conter apenas letras, números, pontos, underscores e hífens");
+    return SystemExchangeNameStamp.of(s);
+  },
+  un: (v: SystemExchangeName): string => SystemExchangeNameStamp.un(v),
+  make: (value: string): SystemExchangeName => SystemExchangeName.of(value),
+}))();
+
+export const SystemRoutingKey = (() => ({
+  of: (v: unknown): SystemRoutingKey => {
+    const s = String(v);
+    if (!s || s.trim().length === 0) throw new TypeError("routing key não pode ser vazia");
+    if (!/^[a-zA-Z][a-zA-Z0-9._-]*$/.test(s)) throw new TypeError("routing key deve conter apenas letras, números, pontos, underscores e hífens");
+    return SystemRoutingKeyStamp.of(s);
+  },
+  un: (v: SystemRoutingKey): string => SystemRoutingKeyStamp.un(v),
+  make: (value: string): SystemRoutingKey => SystemRoutingKey.of(value),
+}))();
+
+export const SystemAgentName = (() => ({
+  of: (v: unknown): SystemAgentName => {
+    const s = String(v);
+    if (!s || s.trim().length === 0) throw new TypeError("nome do agente não pode ser vazio");
+    if (!/^[a-zA-Z][a-zA-Z0-9._-]*$/.test(s)) throw new TypeError("nome do agente deve conter apenas letras, números, pontos, underscores e hífens");
+    return SystemAgentNameStamp.of(s);
+  },
+  un: (v: SystemAgentName): string => SystemAgentNameStamp.un(v),
+  make: (value: string): SystemAgentName => SystemAgentName.of(value),
+}))();
+
+// RabbitMQ Exchanges
 export const EXCHANGES = {
-  AGENTS: 'chatbot.agents',
-  MESSAGES: 'chatbot.messages',
-  WHATSAPP: 'whatsapp.message.text'
+  AGENTS: SystemExchangeName.make('agents'),
+  MESSAGES: SystemExchangeName.make('messages'),
+  WHATSAPP: SystemExchangeName.make('whatsapp'),
 } as const;
 
-/**
- * Agent routing keys
- */
+// Agent Routing Keys
 export const AGENT_ROUTING_KEYS = {
-  PATIENT_NAME: 'patient.name',
-  PATIENT_CPF: 'patient.cpf',
-  PATIENT_EMAIL: 'patient.email',
-  PATIENT_BIRTH_DATE: 'patient.birthDate',
-  // Scheduling agents
-  SCHEDULE_NEW: 'schedule.new',
-  SCHEDULE_DATE: 'schedule.date',
-  SCHEDULE_SERVICE: 'schedule.service',
-  SCHEDULE_DENTIST: 'schedule.dentist',
-  SCHEDULE_PAYMENT: 'schedule.payment'
+  PATIENT_NAME: SystemRoutingKey.make('patient.name'),
+  PATIENT_CPF: SystemRoutingKey.make('patient.cpf'),
+  PATIENT_BIRTH_DATE: SystemRoutingKey.make('patient.birthDate'),
+  PATIENT_EMAIL: SystemRoutingKey.make('patient.email'),
+  SCHEDULE_SERVICE: SystemRoutingKey.make('schedule.service'),
+  SCHEDULE_DATE: SystemRoutingKey.make('schedule.date'),
+  SCHEDULE_DENTIST: SystemRoutingKey.make('schedule.dentist'),
+  SCHEDULE_NEW: SystemRoutingKey.make('schedule.new'),
 } as const;
 
-/**
- * WhatsApp routing keys
- */
-export const WHATSAPP_ROUTING_KEYS = {
-  SEND: 'send',
-  PHONE_PREFIX: 'phone.'
-} as const;
-
-/**
- * Default agent flow sequence for patient data collection
- */
-export const DEFAULT_AGENTS_FLOW = [
-  AGENT_ROUTING_KEYS.PATIENT_NAME,
-  AGENT_ROUTING_KEYS.PATIENT_CPF,
-  AGENT_ROUTING_KEYS.PATIENT_BIRTH_DATE,
-  AGENT_ROUTING_KEYS.PATIENT_EMAIL
+// Default Agent Flow
+export const DEFAULT_AGENTS_FLOW: SystemAgentName[] = [
+  SystemAgentName.make('patient.name'),
+  SystemAgentName.make('patient.cpf'),
+  SystemAgentName.make('patient.birthDate'),
+  SystemAgentName.make('patient.email'),
 ] as const;
 
-/**
- * Scheduling flow sequences based on user choice
- */
+// Scheduling Flows
 export const SCHEDULING_FLOWS = {
-  DATE_FIRST: [
-    AGENT_ROUTING_KEYS.SCHEDULE_DATE,
-    AGENT_ROUTING_KEYS.SCHEDULE_SERVICE,
-    AGENT_ROUTING_KEYS.SCHEDULE_DENTIST,
-    AGENT_ROUTING_KEYS.SCHEDULE_PAYMENT
-  ],
-  SERVICE_FIRST: [
-    AGENT_ROUTING_KEYS.SCHEDULE_SERVICE,
-    AGENT_ROUTING_KEYS.SCHEDULE_DATE,
-    AGENT_ROUTING_KEYS.SCHEDULE_DENTIST,
-    AGENT_ROUTING_KEYS.SCHEDULE_PAYMENT
-  ],
-  DENTIST_FIRST: [
-    AGENT_ROUTING_KEYS.SCHEDULE_DENTIST,
-    AGENT_ROUTING_KEYS.SCHEDULE_DATE,
-    AGENT_ROUTING_KEYS.SCHEDULE_SERVICE,
-    AGENT_ROUTING_KEYS.SCHEDULE_PAYMENT
-  ]
+  COMPLETE_FLOW: [
+    SystemAgentName.make('schedule.service'),
+    SystemAgentName.make('schedule.date'),
+    SystemAgentName.make('schedule.dentist'),
+    SystemAgentName.make('schedule.new'),
+  ] as const,
+  SERVICE_ONLY: [
+    SystemAgentName.make('schedule.service'),
+  ] as const,
+  DATE_ONLY: [
+    SystemAgentName.make('schedule.date'),
+  ] as const,
 } as const;
 
-/**
- * Complete flow including patient data collection and scheduling
- */
-export const COMPLETE_FLOW = [
-  ...DEFAULT_AGENTS_FLOW,
-  AGENT_ROUTING_KEYS.SCHEDULE_NEW
-] as const;
-
-/**
- * System timeouts and intervals
- */
+// Timeouts Configuration
 export const TIMEOUTS = {
   USER_RESPONSE: TimeDurationMS.make(30000), // 30 seconds
   REMINDER_TIMEOUT: TimeDurationMS.make(60000), // 60 seconds
@@ -90,9 +111,7 @@ export const TIMEOUTS = {
   MAX_RETRIES: MetricsRetryCount.make(3)
 } as const;
 
-/**
- * Default values for error cases
- */
+// Default Values
 export const DEFAULT_VALUES = {
   NAME: 'Nome Não Informado',
   CPF: PatientCpf.make('00000000000'), // CPF padrão para erros
@@ -100,15 +119,31 @@ export const DEFAULT_VALUES = {
   BIRTH_DATE: '01/01/1970'
 } as const;
 
-/**
- * Agent messages
- */
+// Agent Messages
 export const AGENT_MESSAGES = {
-  GREETING: 'Olá! Bem-vindo ao nosso sistema de atendimento. Vou coletar algumas informações suas.',
-  PATIENT_NAME: 'Por favor, informe seu nome completo:',
-  PATIENT_CPF: 'Agora preciso do seu CPF (apenas números):',
-  PATIENT_EMAIL: 'Por último, informe seu e-mail:',
-  PATIENT_BIRTH_DATE: 'Qual sua data de nascimento? (formato: DD/MM/AAAA)',
-  INVALID_INPUT: 'Por favor, forneça uma informação válida.',
-  COMPLETION: 'Obrigado! Suas informações foram coletadas com sucesso.'
+  PATIENT_NAME: {
+    REQUEST: 'Olá! Qual é o seu nome completo?',
+    INVALID: 'Nome inválido. Por favor, forneça seu nome completo.',
+    RETRY: 'Informação inválida (tentativa {attempt}/3). Qual é o seu nome completo?',
+    DEFAULT_SET: 'Após 3 tentativas, definindo valor padrão. Continuando...'
+  },
+  PATIENT_CPF: {
+    REQUEST: 'Agora preciso do seu CPF (apenas números):',
+    INVALID: 'CPF inválido. Por favor, forneça um CPF válido.',
+    RETRY: 'Informação inválida (tentativa {attempt}/3). Por favor, forneça seu CPF:',
+    DEFAULT_SET: 'Após 3 tentativas, definindo valor padrão. Continuando...'
+  },
+  PATIENT_BIRTH_DATE: {
+    REQUEST: 'Qual sua data de nascimento? (formato: DD/MM/AAAA)',
+    INVALID: 'Data inválida. Por favor, use o formato DD/MM/AAAA e forneça uma data válida.',
+    RETRY: 'Informação inválida (tentativa {attempt}/3). Qual sua data de nascimento? (formato: DD/MM/AAAA)',
+    DEFAULT_SET: 'Após 3 tentativas, definindo valor padrão. Continuando...'
+  },
+  PATIENT_EMAIL: {
+    REQUEST: 'Por último, informe seu e-mail:',
+    INVALID: 'E-mail inválido. Por favor, forneça um e-mail válido.',
+    RETRY: 'Informação inválida (tentativa {attempt}/3). Por último, informe seu e-mail:',
+    DEFAULT_SET: 'Após 3 tentativas, definindo valor padrão. Continuando...',
+    COMPLETION: 'Obrigado! Coletamos todas as informações necessárias:\n\nNome: {name}\nCPF: {cpf}\nData de Nascimento: {birthDate}\nE-mail: {email}\n\nSeu atendimento foi registrado com sucesso!'
+  }
 } as const;

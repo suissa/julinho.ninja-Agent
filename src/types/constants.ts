@@ -121,10 +121,13 @@ export const TIMEOUTS = {
 // Default Values
 export const DEFAULT_VALUES = {
   NAME: 'Nome Não Informado',
-  CPF: PatientCpf.make('00000000000'), // CPF padrão para erros
+  get CPF() { return PatientCpf.makeDefault(); }, // Lazy loading - só executa quando acessado
   EMAIL: PatientEmail.make('nao-informado@sistema.com'), // Email padrão para erros
   BIRTH_DATE: '01/01/1970'
 } as const;
+
+// Função para obter CPF padrão quando necessário
+export const getDefaultCpf = (): PatientCpf => PatientCpf.makeDefault();
 
 // Agent Messages
 export const AGENT_MESSAGES = {

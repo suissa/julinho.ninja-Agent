@@ -1,1 +1,0 @@
-{"version":3,"file":"shim.js","sourceRoot":"","sources":["../../src/semantic/shim.ts"],"names":[],"mappings":";;AAKA,sBAKC;AALD,SAAgB,KAAK;IACnB,OAAO;QACL,EAAE,EAAE,CAAI,CAAI,EAAE,EAAE,CAAC,CAAmB;QACpC,EAAE,EAAE,CAAI,CAAiB,EAAE,EAAE,CAAC,CAAiB;KAChD,CAAC;AACJ,CAAC"}

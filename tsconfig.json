@@ -5,6 +5,12 @@
     "lib": ["ES2020"],
     "outDir": "./dist",
     "rootDir": "./src",
+    "baseUrl": ".",
+    "paths": {
+      "@domain/*": ["domains/*"],
+      "@types/*": ["src/types/*"],
+      "@src/*": ["src/*"]
+    },
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,

@@ -20,6 +20,8 @@ class GreetingAgent {
     // Handle incoming phone messages
     async handlePhoneMessage(message) {
         const number = message.number;
+        // LOG DIRETO: Mensagem chegou aqui!
+        console.log(`🔥 MENSAGEM CHEGOU! Número: ${number}, Texto: "${message.text}", CorrelationId: ${message.correlationId}, Timestamp: ${message.timestamp}`);
         try {
             // Check if phone number exists in global memory clients list
             if (!this.globalMemory.hasClient(number)) {
@@ -64,10 +66,8 @@ class GreetingAgent {
             };
             // Publish to current agent queue
             await this.sdkRabbitmq.publish(constants_1.EXCHANGES.AGENTS, currentStage, payload);
-            // Wait 5 seconds before forwarding the original user message
-            await new Promise(resolve => setTimeout(resolve, 5000));
-            // Forward the original user message to the appropriate agent
-            await this.sdkRabbitmq.publish(constants_1.EXCHANGES.MESSAGES, `phone.${number}`, message);
+            // Não reenviar a mensagem automaticamente - deixar o agente processar diretamente
+            console.log(`GreetingAgent: Message forwarded to ${currentStage} for processing`);
         }
     }
     // Activate the first agent in the flow

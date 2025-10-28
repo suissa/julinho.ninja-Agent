@@ -8,7 +8,7 @@
     "baseUrl": ".",
     "paths": {
       "@domain/*": ["domains/*"],
-      "@types/*": ["src/types/*"],
+      "@tys/*": ["src/types/*"],
       "@src/*": ["src/*"]
     },
     "strict": true,

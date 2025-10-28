@@ -2,7 +2,7 @@
  * Message payload structures for agent communication
  */
 
-import { TimeTimestampUnix } from './shared';
+import { TimeTimestampUnix } from '@tys/shared';
 
 export interface AgentActivationPayload {
   number: string;

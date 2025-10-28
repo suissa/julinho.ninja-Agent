@@ -1,30 +1,7 @@
 /**
  * Configuration interfaces for the ChatBot system
  */
-import { RabbitMQConfig } from './sdk';
-import { SessionPersistenceConfig } from './session';
-/**
- * Main ChatBot configuration
- */
-export interface ChatBotConfig {
-    rabbitmq: RabbitMQConfig;
-    agents: AgentConfig;
-    system: SystemConfig;
-}
-/**
- * Agent configuration settings
- */
-export interface AgentConfig {
-    flow: string[];
-    timeouts: {
-        userResponse: number;
-        reminderTimeout: number;
-        maxRetries: number;
-    };
-    duplicateMessagePrevention: {
-        minInterval: number;
-    };
-}
+import { SessionPersistenceConfig } from '@tys/session';
 /**
  * System-wide configuration
  */

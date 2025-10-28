@@ -3,12 +3,12 @@
  * Implements Specification Pattern for agent behavior
  */
 
-import { IAgent } from '../types/agent';
-import { SdkRabbitmq } from '../sdk/SdkRabbitmq';
-import { IGlobalMemory } from '../memory/interfaces';
-import { AgentActivationPayload, UserMessage } from '../types/messages';
-import { AgentSpecification, AgentActivationCommand, AgentFlowSpecification } from '../types/specifications';
-import { Logger } from '../utils/logger';
+import { IAgent } from '@typez/agent';
+import { SdkRabbitmq } from '@src/sdk/SdkRabbitmq';
+import { IGlobalMemory } from '@src/memory/interfaces';
+import { AgentActivationPayload, UserMessage } from '@typez/messages';
+import { AgentSpecification, AgentActivationCommand, AgentFlowSpecification } from '@typez/specifications';
+import { Logger } from '@src/utils/logger';
 
 export abstract class BaseAgent implements IAgent, AgentSpecification, AgentFlowSpecification {
   protected routingKey: string;

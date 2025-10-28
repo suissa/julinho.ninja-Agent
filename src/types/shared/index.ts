@@ -1,14 +1,19 @@
 // src/types/shared/index.ts
-// Barrel exports para tipos compartilhados
+// Exports diretos para tipos compartilhados
 
 // Time Domain
-export * from './time-timestamp-unix';
-export * from './time-duration-ms';
-export * from './time-date';
+// export { TimeTimestampUnix } from './time-timestamp-unix'; // Temporariamente comentado
+export { TimeDurationMS } from './time-duration-ms';
+export { TimeTimestampUnix } from './time-timestamp-unix';
 
 // Patient Domain
-export * from './patient-cpf';
-export * from './patient-email';
+export { PatientCpf } from './patient-cpf';
+export { PatientEmail } from './patient-email';
+  export { PatientBirthDate } from '../client';
+export { PatientPhone } from '../client';
+export { PatientName } from '../client';
+export { ServicePriceBRL } from '../client';
+export { ServiceDurationMinutes } from '../client';
 
 // Metrics Domain
-export * from './metrics-retry-count';
+export { MetricsRetryCount } from  '@tys/shared/metrics-retry-count';

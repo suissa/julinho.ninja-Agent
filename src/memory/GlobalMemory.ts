@@ -4,13 +4,13 @@
  */
 
 import { IGlobalMemory } from './interfaces';
-import { ClientData, ClientStage } from '@tys/client';
-import { SessionData, SessionPersistenceConfig } from '@tys/session';
+import { ClientData, ClientStage } from '@src/types/client';
+import { SessionData, SessionPersistenceConfig } from '@src/types/session';
 import { FileSessionPersistence } from '@src/memory/SessionPersistence';
 import { TimeoutManager, TimeoutConfig } from '@src/memory/TimeoutManager';
-import { ConcurrentSessionManager } from '@src/memory/ConcurrentSessionManager';
+import { ConcurrentSessionManager } from '@src/memory';
 import { Logger } from '@src/utils/logger';
-import { DEFAULT_AGENTS_FLOW, SCHEDULING_FLOWS, TIMEOUTS } from '@tys/constants';
+import { DEFAULT_AGENTS_FLOW, SCHEDULING_FLOWS, TIMEOUTS } from '@src/types/constants';
 
 export class GlobalMemory implements IGlobalMemory {
   public agentsFlow: string[] = []; // Mantido para compatibilidade

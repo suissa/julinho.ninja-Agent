@@ -1,6 +1,16 @@
 /**
  * SdkRabbitmq interfaces for RabbitMQ operations
  */
+declare const __brand: unique symbol;
+type Brand<T, Name extends string> = T & {
+    readonly [__brand]: Name;
+};
+export type SystemPortTcp = Brand<number, "system.port.tcp">;
+export declare const SystemPortTcp: {
+    of: (v: unknown) => SystemPortTcp;
+    un: (v: SystemPortTcp) => number;
+    make: (value: number) => SystemPortTcp;
+};
 export interface ISdkRabbitmq {
     /**
      * Publish message to exchange with routing key
@@ -37,7 +47,7 @@ export interface SdkRabbitmq extends ISdkRabbitmq {
  */
 export interface RabbitMQConfig {
     host: string;
-    port: number;
+    port: SystemPortTcp;
     username: string;
     password: string;
     vhost?: string;
@@ -47,4 +57,5 @@ export interface RabbitMQConfig {
  * Message callback function type
  */
 export type MessageCallback = (message: any) => void | Promise<void>;
+export {};
 //# sourceMappingURL=sdk.d.ts.map

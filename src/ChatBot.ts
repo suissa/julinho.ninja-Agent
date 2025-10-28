@@ -15,8 +15,8 @@ import { ScheduleServiceAgent } from './agents/ScheduleServiceAgent';
 import { ScheduleDentistAgent } from './agents/ScheduleDentistAgent';
 import { SchedulePaymentAgent } from './agents/SchedulePaymentAgent';
 import { createChatBotConfig } from './config/environment';
-import { EXCHANGES, AGENT_ROUTING_KEYS } from './types/constants';
-import { Logger } from './utils/logger';
+import { EXCHANGES, AGENT_ROUTING_KEYS } from '@typez/constants';
+import { Logger } from '@src/utils/logger';
 
 export class ChatBot {
   private sdkRabbitmq!: SdkRabbitmq;

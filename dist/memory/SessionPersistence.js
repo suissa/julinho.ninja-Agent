@@ -39,7 +39,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.FileSessionPersistence = void 0;
 const fs = __importStar(require("fs/promises"));
 const path = __importStar(require("path"));
-const logger_1 = require("../utils/logger");
+const client_1 = require("@typez/client");
+const logger_1 = require("@src/utils/logger");
+const shared_1 = require("@typez/shared");
 class FileSessionPersistence {
     constructor(config) {
         this.config = config;
@@ -230,7 +232,7 @@ class FileSessionPersistence {
                 name: serializable.clientData.name,
                 cpf: serializable.clientData.cpf,
                 email: serializable.clientData.email,
-                birthDate: serializable.clientData.birthDate,
+                birthDate: client_1.PatientBirthDate.make(serializable.clientData.birthDate),
                 currentAgent: serializable.clientData.currentAgent,
                 startTime: new Date(serializable.clientData.startTime),
                 lastActivity: new Date(serializable.clientData.lastActivity)
@@ -244,9 +246,9 @@ class FileSessionPersistence {
             },
             agentsFlow: [...serializable.agentsFlow],
             lastMessageSent: serializable.lastMessageSent,
-            sessionTimeout: serializable.sessionTimeout,
-            createdAt: new Date(serializable.createdAt),
-            updatedAt: new Date(serializable.updatedAt)
+            sessionTimeout: shared_1.TimeDurationMS.of(Number(serializable.sessionTimeout)),
+            createdAt: new Date(shared_1.TimeTimestampUnix.of(Number(serializable.createdAt))),
+            updatedAt: new Date(shared_1.TimeTimestampUnix.of(Number(serializable.updatedAt)))
         };
     }
 }

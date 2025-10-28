@@ -1,18 +1,21 @@
 /**
  * Base Agent class - Abstract base for all agents
- * Provides common functionality for all agent implementations
+ * Implements Specification Pattern for agent behavior
  */
-import { IAgent } from '../types/agent';
-import { SdkRabbitmq } from '../sdk/SdkRabbitmq';
-import { IGlobalMemory } from '../memory/interfaces';
-import { AgentActivationPayload } from '../types/messages';
-import { Logger } from '../utils/logger';
-export declare abstract class BaseAgent implements IAgent {
+import { IAgent } from '@typez/agent';
+import { SdkRabbitmq } from '@src/sdk/SdkRabbitmq';
+import { IGlobalMemory } from '@src/memory/interfaces';
+import { AgentActivationPayload } from '@typez/messages';
+import { AgentSpecification, AgentActivationCommand, AgentFlowSpecification } from '@typez/specifications';
+import { Logger } from '@src/utils/logger';
+export declare abstract class BaseAgent implements IAgent, AgentSpecification, AgentFlowSpecification {
     protected routingKey: string;
     protected agentName: string;
     protected sdkRabbitmq: SdkRabbitmq;
     protected globalMemory: IGlobalMemory;
     protected logger: Logger;
+    private processingUsers;
+    private lastMessageSent;
     /**
      * Constructor for BaseAgent
      * @param routingKey - RabbitMQ routing key for this agent
@@ -44,33 +47,69 @@ export declare abstract class BaseAgent implements IAgent {
      */
     abstract getDefaultValueForErrors(): string;
     /**
-     * Send message to WhatsApp user with duplicate prevention
+     * ESPECIFICAÇÃO canIActivate
+     * Verifica se o agente pode ser ativado ou não
+     * Recebe payload na fila de roteamento específica com telefone do usuário
+     * Verifica na memória se está marcado como agente atual
+     * Se sim → retorna true (pode ser ativado)
+     */
+    canIActivate(command: AgentActivationCommand): Promise<boolean>;
+    /**
+     * Wrapper para compatibilidade - usa canIActivate
+     */
+    isActivatedBy(command: AgentActivationCommand): Promise<boolean>;
+    /**
+     * Verifica se o agent processou e validou a resposta do usuário com sucesso
+     * Se verdadeiro, faz unbind da routingKey do telefone e ativa o próximo agent
+     */
+    isSatisfiedBy(number: string, userInput: string): Promise<boolean>;
+    /**
+     * Completa a satisfação do agent: unbind + ativar próximo
+     */
+    private completeSatisfaction;
+    /**
+     * Verifica se este agent é o atual no fluxo para o telefone especificado
+     */
+    isCurrentAgent(number: string): boolean;
+    /**
+     * Obtém o próximo agent no fluxo POR USUÁRIO
+     */
+    getNextAgent(number: string): string | null;
+    /**
+     * Marca este agent como satisfeito e move para o próximo
+     */
+    /**
+     * ESPECIFICAÇÃO canIActivateNextAgent
+     * Verifica se o Agent atual deve ativar o próximo Agente
+     * Deve ter feito unbind na routingKey do telefone E ter marcado seu stage como visitado/concluído
+     * E ter colocado a informação na Memory E pegar a routingKey do próximo Agent
+     */
+    protected canIActivateNextAgent(number: string): Promise<boolean>;
+    /**
+     * Move para próximo agente seguindo especificação canIActivateNextAgent
+     */
+    moveToNextAgent(number: string): Promise<void>;
+    /**
+     * ESPECIFICAÇÃO canSendWhatsAppMessage
+     * Verifica se o agente pode enviar uma mensagem para o WhatsApp do usuário
+     * Precisa estar ativado E estar ouvindo a routingKey do WhatsApp do usuário
+     * E validar na memória se é o agente atual E principalmente se a flag MESSAGE_SENT for false PARA ESTE AGENTE
+     * Se tudo OK → retorna true
+     */
+    protected canSendWhatsAppMessage(number: string): boolean;
+    /**
+     * Send message to WhatsApp user seguindo especificação canSendWhatsAppMessage
      * @param number - User's phone number
      * @param message - Message to send
      */
     protected sendToWhatsApp(number: string, message: string): Promise<void>;
     /**
-     * Activate the next agent in the flow sequence
-     * @param number - User's phone number
-     */
-    protected activateNextAgent(number: string): Promise<void>;
-    /**
-     * Subscribe to messages from a specific phone number
-     * @param number - User's phone number to subscribe to
-     */
-    protected subscribeToPhone(number: string): Promise<void>;
-    /**
-     * Unsubscribe from messages from a specific phone number
-     * @param number - User's phone number to unsubscribe from
-     */
-    protected unsubscribeFromPhone(number: string): Promise<void>;
-    /**
-     * Handle agent activation - called when this agent should become active
+     * Handle agent activation using Specification Pattern
      * @param payload - Activation payload with phone number and sender info
      */
     onActivation(payload: AgentActivationPayload): Promise<void>;
     /**
-     * Handle user message received via subscription callback
+     * Handle user message using Specification Pattern
      * @param message - User message from WhatsApp
      */
     private handleUserMessage;
@@ -111,7 +150,7 @@ export declare abstract class BaseAgent implements IAgent {
      */
     protected setCurrentStageSafe(number: string, stage: string): Promise<void>;
     /**
-     * Handle final timeout - end session gracefully
+     * Handle final timeout using Specification Pattern
      * @param number - User's phone number
      * @param stage - Current stage that timed out
      */

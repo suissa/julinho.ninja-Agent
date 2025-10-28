@@ -6,8 +6,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PatientCPFAgent = void 0;
 const BaseAgent_1 = require("./BaseAgent");
-const constants_1 = require("../types/constants");
-const validation_1 = require("../utils/validation");
+const constants_1 = require("@types/constants");
+const validation_1 = require("@src/utils/validation");
 class PatientCPFAgent extends BaseAgent_1.BaseAgent {
     constructor(sdkRabbitmq, globalMemory) {
         super('patient.cpf', 'PatientCPFAgent', sdkRabbitmq, globalMemory);

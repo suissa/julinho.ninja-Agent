@@ -4,10 +4,11 @@
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { SessionData, SessionPersistenceConfig, SerializableSessionData, SessionManager } from '../types/session';
-import { ClientData, ClientStage } from '../types/client';
-import { Logger } from '../utils/logger';
-
+import { SessionData, SessionPersistenceConfig, SerializableSessionData, SessionManager } from '@typez/session';
+import { ClientData, ClientStage, PatientBirthDate, PatientEmail, PatientName, PatientPhone } from '@typez/client';
+import { Logger } from '@src/utils/logger';
+import { TimeTimestampUnix, TimeDurationMS } from '@tys/shared';
+import { PatientCpf } from '@tys/shared';  
 export class FileSessionPersistence implements SessionManager {
   private config: SessionPersistenceConfig;
   private logger: Logger;
@@ -228,7 +229,7 @@ export class FileSessionPersistence implements SessionManager {
         name: serializable.clientData.name,
         cpf: serializable.clientData.cpf,
         email: serializable.clientData.email,
-        birthDate: serializable.clientData.birthDate,
+        birthDate: PatientBirthDate.make(serializable.clientData.birthDate),
         currentAgent: serializable.clientData.currentAgent,
         startTime: new Date(serializable.clientData.startTime),
         lastActivity: new Date(serializable.clientData.lastActivity)
@@ -242,9 +243,9 @@ export class FileSessionPersistence implements SessionManager {
       },
       agentsFlow: [...serializable.agentsFlow],
       lastMessageSent: serializable.lastMessageSent,
-      sessionTimeout: serializable.sessionTimeout,
-      createdAt: new Date(serializable.createdAt),
-      updatedAt: new Date(serializable.updatedAt)
+      sessionTimeout: TimeDurationMS.of(Number(serializable.sessionTimeout)),
+      createdAt: new Date(TimeTimestampUnix.of(Number(serializable.createdAt))),
+      updatedAt: new Date(TimeTimestampUnix.of(Number(serializable.updatedAt)))
     };
   }
 }

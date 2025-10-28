@@ -9,6 +9,11 @@ export declare class ChatBot {
     private patientCPFAgent;
     private patientBirthDateAgent;
     private patientEmailAgent;
+    private scheduleNewAgent;
+    private scheduleDateAgent;
+    private scheduleServiceAgent;
+    private scheduleDentistAgent;
+    private schedulePaymentAgent;
     private logger;
     constructor();
     initialize(): Promise<void>;

@@ -1,14 +1,15 @@
 /**
  * Session management types for persistence and recovery
  */
-import { ClientData, ClientStage } from './client';
+import { ClientData, ClientStage } from '@tys/client';
+import { TimeDurationMS, TimeTimestampUnix } from '@tys/shared';
 export interface SessionData {
     number: string;
     clientData: ClientData;
     clientStage: ClientStage;
     agentsFlow: string[];
-    lastMessageSent?: number | undefined;
-    sessionTimeout?: number | undefined;
+    lastMessageSent?: TimeTimestampUnix | undefined;
+    sessionTimeout?: TimeDurationMS | undefined;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -16,8 +17,8 @@ export interface SessionPersistenceConfig {
     enabled: boolean;
     storageType: 'file' | 'database';
     filePath?: string;
-    cleanupInterval?: number;
-    sessionTimeout?: number;
+    cleanupInterval?: TimeDurationMS;
+    sessionTimeout?: TimeDurationMS;
 }
 export interface SerializableSessionData {
     number: string;

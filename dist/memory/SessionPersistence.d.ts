@@ -1,7 +1,7 @@
 /**
  * Session persistence implementation for saving and restoring session state
  */
-import { SessionData, SessionPersistenceConfig, SessionManager } from '../types/session';
+import { SessionData, SessionPersistenceConfig, SessionManager } from '@typez/session';
 export declare class FileSessionPersistence implements SessionManager {
     private config;
     private logger;

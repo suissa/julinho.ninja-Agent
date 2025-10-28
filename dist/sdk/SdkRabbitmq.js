@@ -177,12 +177,15 @@ class SdkRabbitmq {
             await this.channel.consume(queueName, async (msg) => {
                 if (msg) {
                     try {
-                        const text = JSON.parse(msg.text.toString());
-                        this.logger.debug('Message received', { exchange, queueName, routingKey, text });
-                        await callback(text);
+                        console.log(`🔥 RAW MESSAGE RECEIVED - Queue: ${queueName}, Content: ${msg.content.toString()}`);
+                        const content = JSON.parse(msg.content.toString());
+                        this.logger.debug('Message received', { exchange, queueName, routingKey, content });
+                        await callback(content);
                         this.channel.ack(msg);
                     }
                     catch (error) {
+                        console.error(`❌ ERROR PROCESSING MESSAGE - Queue: ${queueName}, Error:`, error);
+                        console.error(`❌ RAW MESSAGE CONTENT:`, msg.content?.toString());
                         this.logger.error('Error processing message:', error);
                         this.channel.nack(msg, false, false); // Don't requeue failed messages
                     }

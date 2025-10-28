@@ -4,10 +4,10 @@
  */
 
 import { BaseAgent } from './BaseAgent';
-import { SdkRabbitmq } from '../sdk/SdkRabbitmq';
-import { IGlobalMemory } from '../memory/interfaces';
-import { AGENT_MESSAGES, DEFAULT_VALUES } from '../types/constants';
-import { validateCPF } from '../utils/validation';
+import { SdkRabbitmq } from '@src/sdk/SdkRabbitmq';
+import { IGlobalMemory } from '@src/memory/interfaces';
+import { AGENT_MESSAGES, DEFAULT_VALUES } from '@types/constants';
+import { validateCPF } from '@src/utils/validation';
 
 export class PatientCPFAgent extends BaseAgent {
   constructor(sdkRabbitmq: SdkRabbitmq, globalMemory: IGlobalMemory) {

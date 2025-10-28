@@ -2,7 +2,7 @@
  * Specification Pattern interfaces for Agent behavior
  */
 
-import { TimeTimestampUnix } from './shared';
+import { TimeTimestampUnix } from '@tys/shared';
 
 export interface AgentActivationCommand {
   number: string;

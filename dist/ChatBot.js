@@ -11,9 +11,14 @@ const PatientNameAgent_1 = require("./agents/PatientNameAgent");
 const PatientCPFAgent_1 = require("./agents/PatientCPFAgent");
 const PatientBirthDateAgent_1 = require("./agents/PatientBirthDateAgent");
 const PatientEmailAgent_1 = require("./agents/PatientEmailAgent");
+const ScheduleNewAgent_1 = require("./agents/ScheduleNewAgent");
+const ScheduleDateAgent_1 = require("./agents/ScheduleDateAgent");
+const ScheduleServiceAgent_1 = require("./agents/ScheduleServiceAgent");
+const ScheduleDentistAgent_1 = require("./agents/ScheduleDentistAgent");
+const SchedulePaymentAgent_1 = require("./agents/SchedulePaymentAgent");
 const environment_1 = require("./config/environment");
-const constants_1 = require("./types/constants");
-const logger_1 = require("./utils/logger");
+const constants_1 = require("@typez/constants");
+const logger_1 = require("@src/utils/logger");
 class ChatBot {
     constructor() {
         this.logger = logger_1.Logger.getInstance();
@@ -90,7 +95,13 @@ class ChatBot {
                 'patient-name-agent-queue',
                 'patient-cpf-agent-queue',
                 'patient-birthdate-agent-queue',
-                'patient-email-agent-queue'
+                'patient-email-agent-queue',
+                // Scheduling agent queues
+                'schedule-new-agent-queue',
+                'schedule-date-agent-queue',
+                'schedule-service-agent-queue',
+                'schedule-dentist-agent-queue',
+                'schedule-payment-agent-queue'
             ];
             let purgedQueues = 0;
             for (const queueName of agentQueues) {
@@ -115,24 +126,40 @@ class ChatBot {
     // Initialize all agent instances
     async initializeAgents() {
         this.logger.info('Initializing agents...');
-        // Create agent instances
+        // Create patient data collection agent instances
         this.greetingAgent = new GreetingAgent_1.GreetingAgent(this.sdkRabbitmq, this.globalMemory);
         this.patientNameAgent = new PatientNameAgent_1.PatientNameAgent(this.sdkRabbitmq, this.globalMemory);
         this.patientCPFAgent = new PatientCPFAgent_1.PatientCPFAgent(this.sdkRabbitmq, this.globalMemory);
         this.patientBirthDateAgent = new PatientBirthDateAgent_1.PatientBirthDateAgent(this.sdkRabbitmq, this.globalMemory);
         this.patientEmailAgent = new PatientEmailAgent_1.PatientEmailAgent(this.sdkRabbitmq, this.globalMemory);
+        // Create scheduling agent instances
+        this.scheduleNewAgent = new ScheduleNewAgent_1.ScheduleNewAgent(this.sdkRabbitmq, this.globalMemory);
+        this.scheduleDateAgent = new ScheduleDateAgent_1.ScheduleDateAgent(this.sdkRabbitmq, this.globalMemory);
+        this.scheduleServiceAgent = new ScheduleServiceAgent_1.ScheduleServiceAgent(this.sdkRabbitmq, this.globalMemory);
+        this.scheduleDentistAgent = new ScheduleDentistAgent_1.ScheduleDentistAgent(this.sdkRabbitmq, this.globalMemory);
+        this.schedulePaymentAgent = new SchedulePaymentAgent_1.SchedulePaymentAgent(this.sdkRabbitmq, this.globalMemory);
         // Set up agent subscriptions to their respective queues
         await this.setupAgentSubscriptions();
         this.logger.info('All agents initialized');
     }
     // Set up agent subscriptions
     async setupAgentSubscriptions() {
-        // Subscribe each agent to their respective routing keys
+        // Subscribe patient data collection agents to their respective routing keys
         await this.sdkRabbitmq.subscribe(constants_1.EXCHANGES.AGENTS, 'patient-name-agent-queue', constants_1.AGENT_ROUTING_KEYS.PATIENT_NAME, (payload) => this.patientNameAgent.onActivation(payload));
         await this.sdkRabbitmq.subscribe(constants_1.EXCHANGES.AGENTS, 'patient-cpf-agent-queue', constants_1.AGENT_ROUTING_KEYS.PATIENT_CPF, (payload) => this.patientCPFAgent.onActivation(payload));
         await this.sdkRabbitmq.subscribe(constants_1.EXCHANGES.AGENTS, 'patient-birthdate-agent-queue', constants_1.AGENT_ROUTING_KEYS.PATIENT_BIRTH_DATE, (payload) => this.patientBirthDateAgent.onActivation(payload));
         await this.sdkRabbitmq.subscribe(constants_1.EXCHANGES.AGENTS, 'patient-email-agent-queue', constants_1.AGENT_ROUTING_KEYS.PATIENT_EMAIL, (payload) => this.patientEmailAgent.onActivation(payload));
-        this.logger.info('Agent subscriptions configured');
+        // Subscribe scheduling agents to their respective routing keys
+        await this.sdkRabbitmq.subscribe(constants_1.EXCHANGES.AGENTS, 'schedule-new-agent-queue', constants_1.AGENT_ROUTING_KEYS.SCHEDULE_NEW, (payload) => this.scheduleNewAgent.onActivation(payload));
+        await this.sdkRabbitmq.subscribe(constants_1.EXCHANGES.AGENTS, 'schedule-date-agent-queue', constants_1.AGENT_ROUTING_KEYS.SCHEDULE_DATE, (payload) => this.scheduleDateAgent.onActivation(payload));
+        await this.sdkRabbitmq.subscribe(constants_1.EXCHANGES.AGENTS, 'schedule-service-agent-queue', constants_1.AGENT_ROUTING_KEYS.SCHEDULE_SERVICE, (payload) => this.scheduleServiceAgent.onActivation(payload));
+        await this.sdkRabbitmq.subscribe(constants_1.EXCHANGES.AGENTS, 'schedule-dentist-agent-queue', constants_1.AGENT_ROUTING_KEYS.SCHEDULE_DENTIST, (payload) => this.scheduleDentistAgent.onActivation(payload));
+        await this.sdkRabbitmq.subscribe(constants_1.EXCHANGES.AGENTS, 'schedule-payment-agent-queue', constants_1.AGENT_ROUTING_KEYS.SCHEDULE_PAYMENT, (payload) => this.schedulePaymentAgent.onActivation(payload));
+        this.logger.info('All agent subscriptions configured', {
+            patientAgents: 4,
+            schedulingAgents: 5,
+            totalAgents: 9
+        });
     }
     // Start periodic session cleanup
     startPeriodicSessionCleanup() {

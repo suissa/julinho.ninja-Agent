@@ -2,7 +2,7 @@
  * Client data structures for patient information and session management
  */
 
-import { PatientCpf, PatientEmail } from './shared';
+import { PatientCpf, PatientEmail } from '@tys/shared';
 
 // Tipagem Semântica Atômica - Inline Implementation (Tipos únicos)
 // Sistema de branding sem runtime overhead

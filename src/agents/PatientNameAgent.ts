@@ -6,7 +6,7 @@
 import { BaseAgent } from './BaseAgent';
 import { SdkRabbitmq } from '../sdk/SdkRabbitmq';
 import { IGlobalMemory } from '../memory/interfaces';
-import { AGENT_MESSAGES, DEFAULT_VALUES } from '../types/constants';
+import { AGENT_MESSAGES, DEFAULT_VALUES } from '@tys/constants';
 
 export class PatientNameAgent extends BaseAgent {
   constructor(sdkRabbitmq: SdkRabbitmq, globalMemory: IGlobalMemory) {
@@ -14,7 +14,7 @@ export class PatientNameAgent extends BaseAgent {
   }
 
   getAgentMessage(): string {
-    return AGENT_MESSAGES.PATIENT_NAME;
+    return AGENT_MESSAGES.PATIENT_NAME.REQUEST as string;
   }
 
   validateInput(input: string): boolean {
@@ -49,11 +49,9 @@ export class PatientNameAgent extends BaseAgent {
     
     // Store the name in global memory
     this.globalMemory.setClientData(number, 'name', trimmedInput);
-    
-    console.log(`PatientNameAgent: Stored name for ${number}: ${trimmedInput}`);
   }
 
   getDefaultValueForErrors(): string {
-    return DEFAULT_VALUES.NAME;
+    return DEFAULT_VALUES.NAME as string;
   }
 }

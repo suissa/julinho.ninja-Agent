@@ -65,12 +65,12 @@ export function createChatBotConfig(): ChatBotConfig {
   const agentConfig: AgentConfig = {
     flow: [...DEFAULT_AGENTS_FLOW],
     timeouts: {
-      userResponse: parseInt(process.env.AGENT_TIMEOUT_USER_RESPONSE || '30000', 10),
-      reminderTimeout: parseInt(process.env.AGENT_TIMEOUT_REMINDER || '60000', 10),
-      maxRetries: parseInt(process.env.AGENT_MAX_RETRIES || '3', 10)
+      userResponse: parseInt(process.env.AGENT_TIMEOUT_USER_RESPONSE || '30000', 10) as any,
+      reminderTimeout: parseInt(process.env.AGENT_TIMEOUT_REMINDER || '60000', 10) as any,
+      maxRetries: parseInt(process.env.AGENT_MAX_RETRIES || '3', 10) as any
     },
     duplicateMessagePrevention: {
-      minInterval: parseInt(process.env.MIN_MESSAGE_INTERVAL || '2000', 10)
+      minInterval: parseInt(process.env.MIN_MESSAGE_INTERVAL || '2000', 10) as any
     }
   };
 
@@ -78,8 +78,8 @@ export function createChatBotConfig(): ChatBotConfig {
     enabled: process.env.SESSION_PERSISTENCE_ENABLED !== 'false',
     storageType: 'file',
     filePath: process.env.SESSION_STORAGE_PATH || './sessions',
-    cleanupInterval: parseInt(process.env.SESSION_CLEANUP_INTERVAL || '300000', 10),
-    sessionTimeout: parseInt(process.env.SESSION_TIMEOUT || '1800000', 10)
+    cleanupInterval: parseInt(process.env.SESSION_CLEANUP_INTERVAL || '300000', 10) as any,
+    sessionTimeout: parseInt(process.env.SESSION_TIMEOUT || '1800000', 10) as any
   };
 
   const systemConfig: SystemConfig = {
@@ -89,11 +89,11 @@ export function createChatBotConfig(): ChatBotConfig {
       whatsapp: EXCHANGES.WHATSAPP
     },
     queues: {
-      prefix: 'queue-'
+      prefix: 'queue-' as any
     },
     logging: {
-      level: (env.LOG_LEVEL as any) || 'info',
-      sanitizeUserData: process.env.SANITIZE_USER_DATA === 'true' || env.NODE_ENV === 'production',
+      level: ((env.LOG_LEVEL as any) || 'info') as any,
+      sanitizeUserData: (process.env.SANITIZE_USER_DATA === 'true' || env.NODE_ENV === 'production') as any,
       format: process.env.LOG_FORMAT || 'json',
       file: process.env.LOG_FILE || './logs/chatbot.log',
       maxFileSize: process.env.LOG_MAX_FILE_SIZE || '10MB',

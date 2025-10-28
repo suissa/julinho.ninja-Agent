@@ -6,8 +6,9 @@
 import { BaseAgent } from './BaseAgent';
 import { SdkRabbitmq } from '@src/sdk/SdkRabbitmq';
 import { IGlobalMemory } from '@src/memory/interfaces';
-import { AGENT_MESSAGES, DEFAULT_VALUES } from '@types/constants';
+import { AGENT_MESSAGES, DEFAULT_VALUES } from '@tys/constants';
 import { validateCPF } from '@src/utils/validation';
+import { PatientCpf } from '@tys/shared';
 
 export class PatientCPFAgent extends BaseAgent {
   constructor(sdkRabbitmq: SdkRabbitmq, globalMemory: IGlobalMemory) {
@@ -15,7 +16,7 @@ export class PatientCPFAgent extends BaseAgent {
   }
 
   getAgentMessage(): string {
-    return AGENT_MESSAGES.PATIENT_CPF;
+    return AGENT_MESSAGES.PATIENT_CPF.REQUEST as string;
   }
 
   validateInput(input: string): boolean {
@@ -32,7 +33,7 @@ export class PatientCPFAgent extends BaseAgent {
     const cleanedCPF = input.replace(/\D/g, '');
     
     // Store the CPF in global memory
-    this.globalMemory.setClientData(number, 'cpf', cleanedCPF);
+    this.globalMemory.setClientData(number, 'cpf', PatientCpf.make(cleanedCPF));
     
     console.log(`PatientCPFAgent: Stored CPF for ${number}: ${cleanedCPF}`);
   }

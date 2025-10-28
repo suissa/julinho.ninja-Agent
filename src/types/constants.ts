@@ -2,7 +2,9 @@
  * System constants for exchanges, routing keys, and configuration
  */
 
-import { PatientCpf, PatientEmail, TimeDurationMS, MetricsRetryCount } from '@tys/shared';
+import { PatientCpf, PatientEmail, TimeDurationMS, MetricsRetryCount } from './shared';
+
+import { SystemExchangeName } from './config';
 
 // Tipagem Semântica Atômica - Inline Implementation (Tipos únicos para constants)
 // Sistema de branding sem runtime overhead
@@ -17,25 +19,12 @@ function STAMP<Name extends string>() {
 }
 
 // Tipos Semânticos para System Domain (Exchanges/Routing)
-export type SystemExchangeName = Brand<string, "system.exchange.name">;
 export type SystemRoutingKey = Brand<string, "system.routing.key">;
 export type SystemAgentName = Brand<string, "system.agent.name">;
 
 // Implementações dos tipos únicos
-const SystemExchangeNameStamp = STAMP<"system.exchange.name">();
 const SystemRoutingKeyStamp = STAMP<"system.routing.key">();
 const SystemAgentNameStamp = STAMP<"system.agent.name">();
-
-export const SystemExchangeName = (() => ({
-  of: (v: unknown): SystemExchangeName => {
-    const s = String(v);
-    if (!s || s.trim().length === 0) throw new TypeError("nome do exchange não pode ser vazio");
-    if (!/^[a-zA-Z][a-zA-Z0-9._-]*$/.test(s)) throw new TypeError("nome do exchange deve conter apenas letras, números, pontos, underscores e hífens");
-    return SystemExchangeNameStamp.of(s);
-  },
-  un: (v: SystemExchangeName): string => SystemExchangeNameStamp.un(v),
-  make: (value: string): SystemExchangeName => SystemExchangeName.of(value),
-}))();
 
 export const SystemRoutingKey = (() => ({
   of: (v: unknown): SystemRoutingKey => {
@@ -99,6 +88,24 @@ export const SCHEDULING_FLOWS = {
   ] as const,
   DATE_ONLY: [
     SystemAgentName.make('schedule.date'),
+  ] as const,
+  DATE_FIRST: [
+    SystemAgentName.make('schedule.date'),
+    SystemAgentName.make('schedule.service'),
+    SystemAgentName.make('schedule.dentist'),
+    SystemAgentName.make('schedule.new'),
+  ] as const,
+  SERVICE_FIRST: [
+    SystemAgentName.make('schedule.service'),
+    SystemAgentName.make('schedule.date'),
+    SystemAgentName.make('schedule.dentist'),
+    SystemAgentName.make('schedule.new'),
+  ] as const,
+  DENTIST_FIRST: [
+    SystemAgentName.make('schedule.dentist'),
+    SystemAgentName.make('schedule.service'),
+    SystemAgentName.make('schedule.date'),
+    SystemAgentName.make('schedule.new'),
   ] as const,
 } as const;
 

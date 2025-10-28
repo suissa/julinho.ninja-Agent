@@ -6,3 +6,4 @@ export * from './sdk';
 export * from './config';
 export * from './constants';
 export * from './session';
+export * from './scheduling';

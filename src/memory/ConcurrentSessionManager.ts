@@ -258,25 +258,11 @@ export class ConcurrentSessionManager {
     const lockedSessions: string[] = [];
     for (const [key, lock] of Array.from(this.activeLocks.entries())) {
       const [number] = key.split(':');
-      if (!lockedSessions.includes(number)) {
-        lockedSessions.push(number);
+      if (!lockedSessions.includes(number as string)) {
+        lockedSessions.push(number as string);
       }
     }
-    return lockedSessions;
+    return lockedSessions as string[];
   }
 
-  async cleanupExpiredSessions(): Promise<void> {
-    this.cleanupExpiredLocks();
-    // Additional cleanup logic can be added here
-  }
-
-  async cleanupSession(number: string): Promise<void> {
-    // Release all locks for this session
-    for (const [key, lock] of Array.from(this.activeLocks.entries())) {
-      if (key.startsWith(`${number}:`)) {
-        this.activeLocks.delete(key);
-      }
-    }
-    this.logger.debug(`Cleaned up session locks for ${number}`);
-  }
 }

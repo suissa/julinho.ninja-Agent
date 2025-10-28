@@ -6,7 +6,8 @@
 import { SdkRabbitmq } from '../sdk/SdkRabbitmq';
 import { IGlobalMemory } from '../memory/interfaces';
 import { UserMessage, AgentActivationPayload } from '../types/messages';
-import { AGENT_MESSAGES, EXCHANGES, WHATSAPP_ROUTING_KEYS } from '../types/constants';
+import { AGENT_MESSAGES, SystemAgentName, SystemRoutingKey } from '../types/constants';
+import { TimeTimestampUnix } from '@tys/shared';
 
 export class GreetingAgent {
   private sdkRabbitmq: SdkRabbitmq;
@@ -21,7 +22,7 @@ export class GreetingAgent {
   public async initialize(): Promise<void> {
     // Subscribe to all phone messages using wildcard routing key
     await this.sdkRabbitmq.subscribe(
-      EXCHANGES.MESSAGES,
+      SystemAgentName.make('messages'),
       'greeting-agent-queue',
       'phone.*',
       (message: UserMessage) => this.handlePhoneMessage(message)
@@ -62,7 +63,7 @@ export class GreetingAgent {
     }
     
     // Send welcome message to WhatsApp
-    await this.sendToWhatsApp(number, AGENT_MESSAGES.GREETING);
+    await this.sendToWhatsApp(number, AGENT_MESSAGES.PATIENT_NAME.DEFAULT_SET);
     
     console.log(`GreetingAgent: New client ${number} added to system`);
     
@@ -83,11 +84,11 @@ export class GreetingAgent {
       const payload: AgentActivationPayload = {
         number: number,
         sender: 'GreetingAgent',
-        timestamp: Date.now()
+        timestamp: TimeTimestampUnix.make(Date.now()) as TimeTimestampUnix
       };
       
       // Publish to current agent queue
-      await this.sdkRabbitmq.publish(EXCHANGES.AGENTS, currentStage, payload);
+      await this.sdkRabbitmq.publish(SystemAgentName.make('agents'), SystemRoutingKey.make(currentStage), payload);
       
       // Não reenviar a mensagem automaticamente - deixar o agente processar diretamente
       console.log(`GreetingAgent: Message forwarded to ${currentStage} for processing`);
@@ -111,11 +112,11 @@ export class GreetingAgent {
       const payload: AgentActivationPayload = {
         number: number,
         sender: 'GreetingAgent',
-        timestamp: Date.now()
+        timestamp: TimeTimestampUnix.make(Date.now()) as TimeTimestampUnix
       };
       
       // Publish to first agent queue
-      await this.sdkRabbitmq.publish(EXCHANGES.AGENTS, firstAgentRoutingKey, payload);
+      await this.sdkRabbitmq.publish(SystemAgentName.make('agents'), SystemRoutingKey.make(firstAgentRoutingKey), payload);
       
       console.log(`GreetingAgent: Activated first agent ${firstAgentRoutingKey} for ${number}`);
     }
@@ -130,7 +131,7 @@ export class GreetingAgent {
     }
     
     // Send message to WhatsApp
-    await this.sdkRabbitmq.publish(EXCHANGES.WHATSAPP, WHATSAPP_ROUTING_KEYS.SEND, {
+    await this.sdkRabbitmq.publish(SystemAgentName.make('whatsapp'), SystemRoutingKey.make('send'), {
       number: number,
       text: message
     });

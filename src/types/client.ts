@@ -2,7 +2,7 @@
  * Client data structures for patient information and session management
  */
 
-import { PatientCpf, PatientEmail } from '@tys/shared';
+import { PatientCpf, PatientEmail } from './shared';
 
 // Tipagem Semântica Atômica - Inline Implementation (Tipos únicos)
 // Sistema de branding sem runtime overhead
@@ -30,6 +30,19 @@ const PatientPhoneStamp = STAMP<"patient.phone">();
 const PatientBirthDateStamp = STAMP<"patient.birthDate">();
 const ServicePriceBRLStamp = STAMP<"service.price.brl">();
 const ServiceDurationMinutesStamp = STAMP<"service.duration.minutes">();
+const PatientNameStamp = STAMP<"patient.name">();
+
+export const PatientName = (() => ({
+  of: (v: unknown): PatientName => {
+    const s = String(v).replace(/\D/g, '');
+    if (s.length < 3) throw new TypeError("nome deve ter pelo menos 3 caracteres");
+    if (s.length > 100) throw new TypeError("nome deve ter no máximo 100 caracteres");
+    return PatientNameStamp.of(s);
+  },
+  un: (v: PatientName): string => PatientNameStamp.un(v),
+  make: (value: string): PatientName => PatientName.of(value),
+}))();
+
 
 export const PatientPhone = (() => ({
   of: (v: unknown): PatientPhone => {

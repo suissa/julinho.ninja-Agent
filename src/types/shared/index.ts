@@ -16,4 +16,4 @@ export { ServicePriceBRL } from '../client';
 export { ServiceDurationMinutes } from '../client';
 
 // Metrics Domain
-export { MetricsRetryCount } from  '@tys/shared/metrics-retry-count';
+export { MetricsRetryCount } from  './metrics-retry-count';

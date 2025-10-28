@@ -3,12 +3,13 @@
  * Implements Specification Pattern for agent behavior
  */
 
-import { IAgent } from '@typez/agent';
+import { IAgent } from '@tys/agent';
 import { SdkRabbitmq } from '@src/sdk/SdkRabbitmq';
 import { IGlobalMemory } from '@src/memory/interfaces';
-import { AgentActivationPayload, UserMessage } from '@typez/messages';
-import { AgentSpecification, AgentActivationCommand, AgentFlowSpecification } from '@typez/specifications';
+import { AgentActivationPayload, UserMessage } from '@tys/messages';
+import { AgentSpecification, AgentActivationCommand, AgentFlowSpecification } from '@tys/specifications';
 import { Logger } from '@src/utils/logger';
+import { TimeTimestampUnix } from '@tys/shared';
 
 export abstract class BaseAgent implements IAgent, AgentSpecification, AgentFlowSpecification {
   protected routingKey: string;
@@ -236,7 +237,7 @@ export abstract class BaseAgent implements IAgent, AgentSpecification, AgentFlow
   /**
    * Obtém o próximo agent no fluxo POR USUÁRIO
    */
-  public getNextAgent(number: string): string | null {
+  public getNextAgent(number?: string): string | null {
     // Para dados do paciente, usar FIFO POR USUÁRIO
     if (['patient.name', 'patient.cpf', 'patient.birthDate', 'patient.email'].includes(this.routingKey)) {
       return this.globalMemory.getNextAgent(number); // FIFO POR USUÁRIO
@@ -330,7 +331,7 @@ export abstract class BaseAgent implements IAgent, AgentSpecification, AgentFlow
       const activationCommand: AgentActivationCommand = {
         number: number,
         sender: this.agentName,
-        timestamp: Date.now()
+        timestamp: TimeTimestampUnix.make(Date.now() as TimeTimestampUnix)
       };
 
       // 5. Pequeno delay para garantir que stage foi atualizado
@@ -451,8 +452,8 @@ export abstract class BaseAgent implements IAgent, AgentSpecification, AgentFlow
     const activationCommand: AgentActivationCommand = {
       number: payload.number,
       sender: payload.sender || 'unknown',
-      timestamp: payload.timestamp || Date.now()
-    };
+      timestamp: payload.timestamp || TimeTimestampUnix.make(Date.now()) as TimeTimestampUnix
+    } as AgentActivationCommand;
 
     console.log(`🎯 [${this.agentName}] Received activation command for ${payload.number}`);
 

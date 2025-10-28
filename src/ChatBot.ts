@@ -15,7 +15,7 @@ import { ScheduleServiceAgent } from './agents/ScheduleServiceAgent';
 import { ScheduleDentistAgent } from './agents/ScheduleDentistAgent';
 import { SchedulePaymentAgent } from './agents/SchedulePaymentAgent';
 import { createChatBotConfig } from './config/environment';
-import { EXCHANGES, AGENT_ROUTING_KEYS } from '@typez/constants';
+import { SystemExchangeName, SystemRoutingKey } from './types/constants';
 import { Logger } from '@src/utils/logger';
 
 export class ChatBot {
@@ -118,9 +118,9 @@ export class ChatBot {
 
     try {
       // Create exchanges if they don't exist
-      await this.sdkRabbitmq.publish(EXCHANGES.AGENTS, 'test', { test: true });
-      await this.sdkRabbitmq.publish(EXCHANGES.MESSAGES, 'test', { test: true });
-      await this.sdkRabbitmq.publish(EXCHANGES.WHATSAPP, 'test', { test: true });
+      await this.sdkRabbitmq.publish(SystemExchangeName.make('agents'), SystemRoutingKey.make('test'), { test: true });
+      await this.sdkRabbitmq.publish(SystemExchangeName.make('messages'), SystemRoutingKey.make('test'), { test: true });
+      await this.sdkRabbitmq.publish(SystemExchangeName.make('whatsapp'), SystemRoutingKey.make('test'), { test: true });
 
       // Purge all existing messages from agent queues
       const agentQueues = [
@@ -186,66 +186,66 @@ export class ChatBot {
   private async setupAgentSubscriptions(): Promise<void> {
     // Subscribe patient data collection agents to their respective routing keys
     await this.sdkRabbitmq.subscribe(
-      EXCHANGES.AGENTS,
+      SystemExchangeName.make('agents'),
       'patient-name-agent-queue',
-      AGENT_ROUTING_KEYS.PATIENT_NAME,
+      SystemRoutingKey.make('patient.name'),
       (payload) => this.patientNameAgent.onActivation(payload)
     );
 
     await this.sdkRabbitmq.subscribe(
-      EXCHANGES.AGENTS,
+      SystemExchangeName.make('agents'),
       'patient-cpf-agent-queue',
-      AGENT_ROUTING_KEYS.PATIENT_CPF,
+      SystemRoutingKey.make('patient.cpf'),
       (payload) => this.patientCPFAgent.onActivation(payload)
     );
 
     await this.sdkRabbitmq.subscribe(
-      EXCHANGES.AGENTS,
+      SystemExchangeName.make('agents'),
       'patient-birthdate-agent-queue',
-      AGENT_ROUTING_KEYS.PATIENT_BIRTH_DATE,
+      SystemRoutingKey.make('patient.birthDate'),
       (payload) => this.patientBirthDateAgent.onActivation(payload)
     );
 
     await this.sdkRabbitmq.subscribe(
-      EXCHANGES.AGENTS,
+      SystemExchangeName.make('agents'),
       'patient-email-agent-queue',
-      AGENT_ROUTING_KEYS.PATIENT_EMAIL,
+      SystemRoutingKey.make('patient.email'),
       (payload) => this.patientEmailAgent.onActivation(payload)
     );
 
     // Subscribe scheduling agents to their respective routing keys
     await this.sdkRabbitmq.subscribe(
-      EXCHANGES.AGENTS,
+      SystemExchangeName.make('agents'),
       'schedule-new-agent-queue',
-      AGENT_ROUTING_KEYS.SCHEDULE_NEW,
+      SystemRoutingKey.make('schedule.new'),
       (payload) => this.scheduleNewAgent.onActivation(payload)
     );
 
     await this.sdkRabbitmq.subscribe(
-      EXCHANGES.AGENTS,
+      SystemExchangeName.make('agents'),
       'schedule-date-agent-queue',
-      AGENT_ROUTING_KEYS.SCHEDULE_DATE,
+      SystemRoutingKey.make('schedule.date'),
       (payload) => this.scheduleDateAgent.onActivation(payload)
     );
 
     await this.sdkRabbitmq.subscribe(
-      EXCHANGES.AGENTS,
+      SystemExchangeName.make('agents'),
       'schedule-service-agent-queue',
-      AGENT_ROUTING_KEYS.SCHEDULE_SERVICE,
+      SystemRoutingKey.make('schedule.service'),
       (payload) => this.scheduleServiceAgent.onActivation(payload)
     );
 
     await this.sdkRabbitmq.subscribe(
-      EXCHANGES.AGENTS,
+      SystemExchangeName.make('agents'),
       'schedule-dentist-agent-queue',
-      AGENT_ROUTING_KEYS.SCHEDULE_DENTIST,
+      SystemRoutingKey.make('schedule.dentist'),
       (payload) => this.scheduleDentistAgent.onActivation(payload)
     );
 
     await this.sdkRabbitmq.subscribe(
-      EXCHANGES.AGENTS,
+      SystemExchangeName.make('agents'),
       'schedule-payment-agent-queue',
-      AGENT_ROUTING_KEYS.SCHEDULE_PAYMENT,
+      SystemRoutingKey.make('schedule.payment'),
       (payload) => this.schedulePaymentAgent.onActivation(payload)
     );
 

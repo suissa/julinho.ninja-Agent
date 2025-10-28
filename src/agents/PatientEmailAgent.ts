@@ -6,8 +6,9 @@
 import { BaseAgent } from './BaseAgent';
 import { SdkRabbitmq } from '../sdk/SdkRabbitmq';
 import { IGlobalMemory } from '../memory/interfaces';
-import { AGENT_MESSAGES, DEFAULT_VALUES } from '../types/constants';
+import { AGENT_MESSAGES, DEFAULT_VALUES } from '@tys/constants';
 import { validateEmail } from '../utils/validation';
+import { PatientEmail } from '@tys/shared';
 
 export class PatientEmailAgent extends BaseAgent {
   constructor(sdkRabbitmq: SdkRabbitmq, globalMemory: IGlobalMemory) {
@@ -15,7 +16,7 @@ export class PatientEmailAgent extends BaseAgent {
   }
 
   getAgentMessage(): string {
-    return AGENT_MESSAGES.PATIENT_EMAIL;
+    return AGENT_MESSAGES.PATIENT_EMAIL.REQUEST as string;
   }
 
   validateInput(input: string): boolean {
@@ -31,7 +32,7 @@ export class PatientEmailAgent extends BaseAgent {
     const trimmedInput = input.trim().toLowerCase(); // Store email in lowercase
     
     // Store the email in global memory
-    this.globalMemory.setClientData(number, 'email', trimmedInput);
+    this.globalMemory.setClientData(number, 'email', PatientEmail.make(trimmedInput));
     
     console.log(`PatientEmailAgent: Stored email for ${number}: ${trimmedInput}`);
   }

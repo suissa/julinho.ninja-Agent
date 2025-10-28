@@ -15,7 +15,7 @@ export class PatientBirthDateAgent extends BaseAgent {
   }
 
   getAgentMessage(): string {
-    return AGENT_MESSAGES.PATIENT_BIRTH_DATE;
+    return AGENT_MESSAGES.PATIENT_BIRTH_DATE.REQUEST;
   }
 
   validateInput(input: string): boolean {

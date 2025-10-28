@@ -2,8 +2,8 @@
  * Session management types for persistence and recovery
  */
 
-import { ClientData, ClientStage } from '@tys/client';
-import { TimeDurationMS, TimeTimestampUnix } from '@tys/shared';
+import { ClientData, ClientStage } from './client';
+import { TimeDurationMS, TimeTimestampUnix } from './shared';
 
 export interface SessionData {
   number: string;

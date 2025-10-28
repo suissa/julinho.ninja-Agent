@@ -97,27 +97,38 @@ export class GreetingAgent {
 
   // Activate the first agent in the flow
   private async activateFirstAgent(number: string): Promise<void> {
-    const firstAgentRoutingKey = this.globalMemory.getNextAgent();
-    
+    console.log(`🎯 [GreetingAgent] activateFirstAgent chamado para ${number}`);
+
+    const firstAgentRoutingKey = this.globalMemory.getNextAgent(number);
+    console.log(`🎯 [GreetingAgent] getNextAgent(${number}) retornou: ${firstAgentRoutingKey}`);
+
     if (firstAgentRoutingKey) {
+      console.log(`🎯 [GreetingAgent] Tentando definir stage ${firstAgentRoutingKey} para ${number}`);
       // Set the current stage for this client (thread-safe)
       const success = await this.globalMemory.setCurrentStageSafe(number, firstAgentRoutingKey);
+      console.log(`🎯 [GreetingAgent] setCurrentStageSafe retornou: ${success}`);
       
       if (!success) {
         console.log(`GreetingAgent: Could not set stage for ${number} due to concurrent access`);
         return;
       }
       
+      console.log(`🎯 [GreetingAgent] Criando payload de ativação para ${firstAgentRoutingKey}`);
+
       // Create activation payload
       const payload: AgentActivationPayload = {
         number: number,
         sender: 'GreetingAgent',
         timestamp: TimeTimestampUnix.make(Date.now()) as TimeTimestampUnix
       };
-      
+
+      console.log(`🎯 [GreetingAgent] Payload criado:`, payload);
+      console.log(`🎯 [GreetingAgent] Publicando para exchange 'agents' com routing key '${firstAgentRoutingKey}'`);
+
       // Publish to first agent queue
       await this.sdkRabbitmq.publish(SystemAgentName.make('agents'), SystemRoutingKey.make(firstAgentRoutingKey), payload);
-      
+
+      console.log(`✅ [GreetingAgent] Ativação publicada com sucesso para ${firstAgentRoutingKey}`);
       console.log(`GreetingAgent: Activated first agent ${firstAgentRoutingKey} for ${number}`);
     }
   }

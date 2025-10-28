@@ -10,7 +10,7 @@ import { FileSessionPersistence } from '@src/memory/SessionPersistence';
 import { TimeoutManager, TimeoutConfig } from '@src/memory/TimeoutManager';
 import { ConcurrentSessionManager } from '@src/memory/ConcurrentSessionManager';
 import { Logger } from '@src/utils/logger';
-import { DEFAULT_AGENTS_FLOW, SCHEDULING_FLOWS, TIMEOUTS } from '@tys/shared';
+import { DEFAULT_AGENTS_FLOW, SCHEDULING_FLOWS, TIMEOUTS } from '@tys/constants';
 
 export class GlobalMemory implements IGlobalMemory {
   public agentsFlow: string[] = []; // Mantido para compatibilidade

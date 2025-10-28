@@ -165,4 +165,118 @@ export class ConcurrentSessionManager {
       active
     };
   }
+
+  // Métodos faltantes chamados pelo GlobalMemory
+  initialize(): void {
+    this.logger.info('ConcurrentSessionManager initialized');
+  }
+
+  shutdown(): void {
+    this.activeLocks.clear();
+    this.logger.info('ConcurrentSessionManager shutdown');
+  }
+
+  async setClientDataSafe(number: string, field: string, value: any): Promise<boolean> {
+    return await this.withSessionLock(
+      number,
+      'setClientData',
+      async () => {
+        this.globalMemory.setClientData(number, field, value);
+        return true;
+      }
+    ) !== null;
+  }
+
+  async setCurrentStageSafe(number: string, stage: string): Promise<boolean> {
+    return await this.withSessionLock(
+      number,
+      'setCurrentStage',
+      async () => {
+        this.globalMemory.setCurrentStage(number, stage);
+        return true;
+      }
+    ) !== null;
+  }
+
+  async markStageAsVisitedSafe(number: string, stage: string): Promise<boolean> {
+    return await this.withSessionLock(
+      number,
+      'markStageAsVisited',
+      async () => {
+        this.globalMemory.markStageAsVisited(number, stage);
+        return true;
+      }
+    ) !== null;
+  }
+
+  async markStageAsErrorSafe(number: string, stage: string): Promise<boolean> {
+    return await this.withSessionLock(
+      number,
+      'markStageAsError',
+      async () => {
+        this.globalMemory.markStageAsError(number, stage);
+        return true;
+      }
+    ) !== null;
+  }
+
+  async addClientSafe(number: string): Promise<boolean> {
+    return await this.withSessionLock(
+      number,
+      'addClient',
+      async () => {
+        this.globalMemory.addClient(number);
+        return true;
+      }
+    ) !== null;
+  }
+
+  getSessionInfo(number: string): any {
+    const clientData = this.globalMemory.getClientData(number);
+    const currentStage = this.globalMemory.getCurrentStage(number);
+    const hasLock = this.hasLock(number, 'session');
+    
+    return {
+      number,
+      currentStage,
+      hasLock,
+      clientData: clientData ? {
+        name: clientData.name,
+        cpf: clientData.cpf,
+        email: clientData.email,
+        startTime: clientData.startTime,
+        lastActivity: clientData.lastActivity
+      } : null
+    };
+  }
+
+  getAllActiveSessions(): string[] {
+    return Array.from(this.globalMemory.clientesVisitantes);
+  }
+
+  getAllLockedSessions(): string[] {
+    const lockedSessions: string[] = [];
+    for (const [key, lock] of this.activeLocks.entries()) {
+      const [number] = key.split(':');
+      if (!lockedSessions.includes(number)) {
+        lockedSessions.push(number);
+      }
+    }
+    return lockedSessions;
+  }
+
+  async cleanupExpiredSessions(): Promise<void> {
+    this.cleanupExpiredLocks();
+    // Additional cleanup logic can be added here
+  }
+
+  async cleanupSession(number: string): Promise<void> {
+    // Release all locks for this session
+    for (const [key, lock] of this.activeLocks.entries()) {
+      if (key.startsWith(`${number}:`)) {
+        this.activeLocks.delete(key);
+      }
+    }
+    this.logger.debug(`Cleaned up session locks for ${number}`);
+  }
 }

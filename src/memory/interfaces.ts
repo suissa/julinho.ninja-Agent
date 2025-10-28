@@ -12,7 +12,7 @@ export interface IGlobalMemory {
   lastMessageSent: Map<string, number>; // number -> timestamp
   
   // Pega o primeiro agente da fila e remove da lista (FIFO)
-  getNextAgent(currentStage?: string): string | null;
+  getNextAgent(): string | null;
   
   // Dynamic flow management for scheduling
   getNextAgentForUser(number: string, currentStage: string): string | null;

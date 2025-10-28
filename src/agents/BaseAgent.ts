@@ -220,7 +220,7 @@ export abstract class BaseAgent implements IAgent, AgentSpecification, AgentFlow
    * Obtém o próximo agent no fluxo
    */
   public getNextAgent(): string | null {
-    return this.globalMemory.getNextAgent(this.routingKey);
+    return this.globalMemory.getNextAgent();
   }
 
   /**
@@ -266,6 +266,24 @@ export abstract class BaseAgent implements IAgent, AgentSpecification, AgentFlow
       }
     } else {
       console.log(`🏁 [${this.agentName}] Flow completed for ${number} - no more agents`);
+
+      // Enviar mensagem de conclusão se for o último agente
+      if (this.routingKey === 'patient.email') {
+        try {
+          const clientData = this.globalMemory.clientData.get(number);
+          const completionMessage = `✅ Obrigado! Suas informações foram coletadas com sucesso.\n\n` +
+            `📋 Resumo dos dados coletados:\n` +
+            `👤 Nome: ${clientData?.name || 'Não informado'}\n` +
+            `🆔 CPF: ${clientData?.cpf || 'Não informado'}\n` +
+            `🎂 Data de Nascimento: ${clientData?.birthDate || 'Não informada'}\n` +
+            `📧 Email: ${clientData?.email || 'Não informado'}\n\n` +
+            `Seus dados estão seguros conosco. Em breve entraremos em contato!`;
+          
+          await this.sendToWhatsApp(number, completionMessage);
+        } catch (error) {
+          console.error(`❌ [${this.agentName}] Error sending completion message:`, error);
+        }
+      }
 
       // Log final da sessão
       const clientData = this.globalMemory.clientData.get(number);

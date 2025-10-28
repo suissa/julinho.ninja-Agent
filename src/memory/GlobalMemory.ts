@@ -18,7 +18,7 @@ export class GlobalMemory implements IGlobalMemory {
   public clientData: Map<string, ClientData> = new Map();
   public clientStages: Map<string, ClientStage> = new Map();
   public lastMessageSent: Map<string, number> = new Map();
-  
+
   private sessionPersistence: FileSessionPersistence;
   private timeoutManager: TimeoutManager;
   private concurrentSessionManager: ConcurrentSessionManager;
@@ -26,7 +26,7 @@ export class GlobalMemory implements IGlobalMemory {
 
   constructor(sessionConfig?: SessionPersistenceConfig, timeoutConfig?: TimeoutConfig) {
     this.logger = Logger.getInstance();
-    
+
     // Initialize session persistence
     const defaultSessionConfig: SessionPersistenceConfig = {
       enabled: true,
@@ -35,46 +35,31 @@ export class GlobalMemory implements IGlobalMemory {
       cleanupInterval: 5 * 60 * 1000, // 5 minutes
       sessionTimeout: 30 * 60 * 1000 // 30 minutes
     };
-    
+
     this.sessionPersistence = new FileSessionPersistence(sessionConfig || defaultSessionConfig);
-    
+
     // Initialize timeout manager
     const defaultTimeoutConfig: TimeoutConfig = {
       userResponseTimeout: TIMEOUTS.USER_RESPONSE,
       reminderTimeout: TIMEOUTS.REMINDER_TIMEOUT,
       maxRetries: TIMEOUTS.MAX_RETRIES
     };
-    
+
     this.timeoutManager = new TimeoutManager(timeoutConfig || defaultTimeoutConfig, this);
-    
+
     // Initialize concurrent session manager
     this.concurrentSessionManager = new ConcurrentSessionManager(this);
-    
+
     // Initialize with default agent flow
     this.resetAgentsFlow();
   }
 
-  // Flow management methods - Implementation in task 3.4 and 11.6
-  getNextAgent(currentStage?: string): string | null {
-    if (!currentStage) {
-      // Se não tem stage atual, retorna o primeiro do fluxo completo
-      return COMPLETE_FLOW[0] || null;
+  // Flow management methods - Implementation in task 3.4 (seguindo especificação FIFO)
+  getNextAgent(): string | null {
+    // Remove e retorna o primeiro item da lista (FIFO) conforme especificação
+    if (this.agentsFlow.length > 0) {
+      return this.agentsFlow.shift() || null;
     }
-    
-    // Encontrar o índice do stage atual no fluxo completo
-    const currentIndex = COMPLETE_FLOW.indexOf(currentStage as any);
-    
-    if (currentIndex === -1) {
-      // Stage atual não encontrado, retorna o primeiro
-      return COMPLETE_FLOW[0] || null;
-    }
-    
-    // Retorna o próximo stage na sequência
-    const nextIndex = currentIndex + 1;
-    if (nextIndex < COMPLETE_FLOW.length) {
-      return COMPLETE_FLOW[nextIndex] || null;
-    }
-    
     return null; // Flow complete
   }
 
@@ -87,12 +72,12 @@ export class GlobalMemory implements IGlobalMemory {
   getNextAgentForUser(number: string, currentStage: string): string | null {
     try {
       const clientData = this.clientData.get(number);
-      
+
       // Check if user has a dynamic scheduling flow
       if (clientData && clientData.dynamicAgentsFlow) {
         const dynamicFlow = clientData.dynamicAgentsFlow as string[];
         const currentIndex = dynamicFlow.indexOf(currentStage);
-        
+
         if (currentIndex !== -1) {
           const nextIndex = currentIndex + 1;
           if (nextIndex < dynamicFlow.length) {
@@ -101,13 +86,13 @@ export class GlobalMemory implements IGlobalMemory {
           return null; // Dynamic flow complete
         }
       }
-      
+
       // Fallback to default flow logic
-      return this.getNextAgent(currentStage);
-      
+      return this.getNextAgent();
+
     } catch (error) {
       console.error(`Error getting next agent for user ${number}:`, error);
-      return this.getNextAgent(currentStage);
+      return this.getNextAgent();
     }
   }
 
@@ -118,7 +103,7 @@ export class GlobalMemory implements IGlobalMemory {
    */
   setDynamicSchedulingFlow(number: string, flowType: 'date-first' | 'service-first' | 'dentist-first'): void {
     let dynamicFlow: string[];
-    
+
     switch (flowType) {
       case 'date-first':
         dynamicFlow = [...SCHEDULING_FLOWS.DATE_FIRST];
@@ -133,11 +118,11 @@ export class GlobalMemory implements IGlobalMemory {
         dynamicFlow = [...SCHEDULING_FLOWS.DATE_FIRST];
         break;
     }
-    
+
     // Store the dynamic flow for this user
     this.setClientData(number, 'dynamicAgentsFlow', dynamicFlow);
     this.setClientData(number, 'schedulingFlowType', flowType);
-    
+
     console.log(`Dynamic scheduling flow set for ${number}: ${flowType} -> ${dynamicFlow.join(' → ')}`);
   }
 
@@ -149,15 +134,15 @@ export class GlobalMemory implements IGlobalMemory {
   isUserInSchedulingPhase(number: string): boolean {
     const currentStage = this.getCurrentStage(number);
     if (!currentStage) return false;
-    
+
     const schedulingStages = [
       'schedule.new',
       'schedule.date',
-      'schedule.service', 
+      'schedule.service',
       'schedule.dentist',
       'schedule.payment'
     ];
-    
+
     return schedulingStages.includes(currentStage);
   }
 
@@ -170,7 +155,7 @@ export class GlobalMemory implements IGlobalMemory {
     try {
       const clientData = this.clientData.get(number);
       if (!clientData) return null;
-      
+
       return {
         schedulingChoice: clientData.schedulingChoice,
         schedulingFlowType: clientData.schedulingFlowType,
@@ -215,7 +200,7 @@ export class GlobalMemory implements IGlobalMemory {
    */
   switchToSchedulingFlow(number: string, flowType: 'date-first' | 'service-first' | 'dentist-first'): void {
     this.setDynamicSchedulingFlow(number, flowType);
-    
+
     // Update current stage to first scheduling agent
     const dynamicFlow = this.getClientData(number).dynamicAgentsFlow as string[];
     if (dynamicFlow && dynamicFlow.length > 0 && dynamicFlow[0]) {
@@ -298,7 +283,7 @@ export class GlobalMemory implements IGlobalMemory {
 
     // Update last activity
     clientData.lastActivity = new Date();
-    
+
     // Save back to map
     this.clientData.set(number, clientData);
   }
@@ -423,7 +408,7 @@ export class GlobalMemory implements IGlobalMemory {
 
     const timeDiff = Date.now() - lastSent;
     const MIN_INTERVAL = 2000; // 2 seconds minimum between messages
-    
+
     return timeDiff >= MIN_INTERVAL;
   }
 
@@ -443,7 +428,7 @@ export class GlobalMemory implements IGlobalMemory {
     this.clientData.clear();
     this.clientStages.clear();
     this.lastMessageSent.clear();
-    
+
     // Reset to default flow
     this.resetAgentsFlow();
   }
@@ -465,7 +450,7 @@ export class GlobalMemory implements IGlobalMemory {
     try {
       const clientData = this.clientData.get(number);
       const clientStage = this.clientStages.get(number);
-      
+
       if (!clientData || !clientStage) {
         this.logger.warn(`Cannot save session for ${number}: missing data`);
         return;
@@ -491,7 +476,7 @@ export class GlobalMemory implements IGlobalMemory {
   async loadSession(number: string): Promise<boolean> {
     try {
       const sessionData = await this.sessionPersistence.loadSession(number);
-      
+
       if (!sessionData) {
         return false;
       }
@@ -500,7 +485,7 @@ export class GlobalMemory implements IGlobalMemory {
       this.clientData.set(number, sessionData.clientData);
       this.clientStages.set(number, sessionData.clientStage);
       this.clientesVisitantes.add(number);
-      
+
       if (sessionData.lastMessageSent) {
         this.lastMessageSent.set(number, sessionData.lastMessageSent);
       }
@@ -529,17 +514,17 @@ export class GlobalMemory implements IGlobalMemory {
     const startTime = Date.now();
     try {
       const sessions = await this.sessionPersistence.getAllSessions();
-      
+
       for (const session of sessions) {
         // Restore each session to memory
         this.clientData.set(session.number, session.clientData);
         this.clientStages.set(session.number, session.clientStage);
         this.clientesVisitantes.add(session.number);
-        
+
         if (session.lastMessageSent) {
           this.lastMessageSent.set(session.number, session.lastMessageSent);
         }
-        
+
         // Log individual session restoration
         this.logger.sessionEvent('restored', session.number, {
           currentStage: session.clientStage.currentStage,
@@ -549,8 +534,8 @@ export class GlobalMemory implements IGlobalMemory {
       }
 
       const duration = Date.now() - startTime;
-      this.logger.performanceMetric('session_restoration_complete', duration, { 
-        sessionsRestored: sessions.length 
+      this.logger.performanceMetric('session_restoration_complete', duration, {
+        sessionsRestored: sessions.length
       });
     } catch (error) {
       this.logger.systemError(error as Error, { operation: 'restoreAllSessions' });

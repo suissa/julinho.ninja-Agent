@@ -11,6 +11,8 @@ export interface ClientData {
   currentAgent?: string | undefined;
   startTime: Date;
   lastActivity: Date;
+
+  messageSent?: string;
   
   // Control flags - MESSAGE_SENT por agente
   messageSentByAgent?: Map<string, boolean> | undefined; // Flag MESSAGE_SENT por agente conforme especificação

@@ -2,6 +2,8 @@
  * System constants for exchanges, routing keys, and configuration
  */
 
+import { PatientCpf, PatientEmail, TimeDurationMS, MetricsRetryCount } from './shared';
+
 /**
  * RabbitMQ Exchange names
  */
@@ -81,11 +83,11 @@ export const COMPLETE_FLOW = [
  * System timeouts and intervals
  */
 export const TIMEOUTS = {
-  USER_RESPONSE: 30000, // 30 seconds
-  REMINDER_TIMEOUT: 60000, // 60 seconds
-  AGENT_ACTIVATION_DELAY: 5000, // 5 seconds
-  MIN_MESSAGE_INTERVAL: 2000, // 2 seconds
-  MAX_RETRIES: 3
+  USER_RESPONSE: TimeDurationMS.make(30000), // 30 seconds
+  REMINDER_TIMEOUT: TimeDurationMS.make(60000), // 60 seconds
+  AGENT_ACTIVATION_DELAY: TimeDurationMS.make(5000), // 5 seconds
+  MIN_MESSAGE_INTERVAL: TimeDurationMS.make(2000), // 2 seconds
+  MAX_RETRIES: MetricsRetryCount.make(3)
 } as const;
 
 /**
@@ -93,8 +95,8 @@ export const TIMEOUTS = {
  */
 export const DEFAULT_VALUES = {
   NAME: 'Nome Não Informado',
-  CPF: '00000000000',
-  EMAIL: 'nao-informado@sistema.com',
+  CPF: PatientCpf.make('00000000000'), // CPF padrão para erros
+  EMAIL: PatientEmail.make('nao-informado@sistema.com'), // Email padrão para erros
   BIRTH_DATE: '01/01/1970'
 } as const;
 

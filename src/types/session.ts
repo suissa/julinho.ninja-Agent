@@ -3,14 +3,15 @@
  */
 
 import { ClientData, ClientStage } from './client';
+import { TimeDurationMS, TimeTimestampUnix } from './shared';
 
 export interface SessionData {
   number: string;
   clientData: ClientData;
   clientStage: ClientStage;
   agentsFlow: string[];
-  lastMessageSent?: number | undefined;
-  sessionTimeout?: number | undefined;
+  lastMessageSent?: TimeTimestampUnix | undefined;
+  sessionTimeout?: TimeDurationMS | undefined;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -19,8 +20,8 @@ export interface SessionPersistenceConfig {
   enabled: boolean;
   storageType: 'file' | 'database';
   filePath?: string;
-  cleanupInterval?: number; // in milliseconds
-  sessionTimeout?: number; // in milliseconds
+  cleanupInterval?: TimeDurationMS;
+  sessionTimeout?: TimeDurationMS;
 }
 
 export interface SerializableSessionData {

@@ -2,10 +2,12 @@
  * Specification Pattern interfaces for Agent behavior
  */
 
+import { TimeTimestampUnix } from './shared';
+
 export interface AgentActivationCommand {
   number: string;
   sender: string;
-  timestamp: number;
+  timestamp: TimeTimestampUnix;
 }
 
 export interface AgentSpecification {

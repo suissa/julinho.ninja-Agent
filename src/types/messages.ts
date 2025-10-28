@@ -2,16 +2,18 @@
  * Message payload structures for agent communication
  */
 
+import { TimeTimestampUnix } from './shared';
+
 export interface AgentActivationPayload {
   number: string;
   sender: string;
-  timestamp: number;
+  timestamp: TimeTimestampUnix;
 }
 
 export interface WhatsAppMessage {
   number: string;
   text: string;
-  timestamp?: number;
+  timestamp?: TimeTimestampUnix;
 }
 
 export interface UserMessage {

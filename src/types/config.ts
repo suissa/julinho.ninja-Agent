@@ -4,6 +4,7 @@
 
 import { RabbitMQConfig } from './sdk';
 import { SessionPersistenceConfig } from './session';
+import { TimeDurationMS, MetricsRetryCount } from './shared';
 
 /**
  * Main ChatBot configuration
@@ -20,12 +21,12 @@ export interface ChatBotConfig {
 export interface AgentConfig {
   flow: string[];
   timeouts: {
-    userResponse: number; // milliseconds
-    reminderTimeout: number; // milliseconds
-    maxRetries: number;
+    userResponse: TimeDurationMS;
+    reminderTimeout: TimeDurationMS;
+    maxRetries: MetricsRetryCount;
   };
   duplicateMessagePrevention: {
-    minInterval: number; // milliseconds
+    minInterval: TimeDurationMS;
   };
 }
 

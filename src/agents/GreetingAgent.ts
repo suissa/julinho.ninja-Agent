@@ -84,7 +84,7 @@ export class GreetingAgent {
       const payload: AgentActivationPayload = {
         number: number,
         sender: 'GreetingAgent',
-        timestamp: TimeTimestampUnix.make(Date.now()) as TimeTimestampUnix
+        timestamp: TimeTimestampUnix.make(Math.floor(Date.now() / 1000)) as TimeTimestampUnix
       };
       
       // Publish to current agent queue
@@ -119,7 +119,7 @@ export class GreetingAgent {
       const payload: AgentActivationPayload = {
         number: number,
         sender: 'GreetingAgent',
-        timestamp: TimeTimestampUnix.make(Date.now()) as TimeTimestampUnix
+        timestamp: TimeTimestampUnix.make(Math.floor(Date.now() / 1000)) as TimeTimestampUnix
       };
 
       console.log(`🎯 [GreetingAgent] Payload criado:`, payload);

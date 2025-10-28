@@ -12,7 +12,13 @@ export interface IGlobalMemory {
   lastMessageSent: Map<string, number>; // number -> timestamp
   
   // Pega o primeiro agente da fila e remove da lista (FIFO)
-  getNextAgent(): string | null;
+  getNextAgent(currentStage?: string): string | null;
+  
+  // Dynamic flow management for scheduling
+  getNextAgentForUser(number: string, currentStage: string): string | null;
+  setDynamicSchedulingFlow(number: string, flowType: 'date-first' | 'service-first' | 'dentist-first'): void;
+  isUserInSchedulingPhase(number: string): boolean;
+  getSchedulingData(number: string): any;
   
   // Métodos para gerenciar clientes
   addClient(number: string): void;
@@ -38,6 +44,8 @@ export interface IGlobalMemory {
   
   // Reinicia o fluxo de agentes para um cliente específico
   resetAgentsFlow(): void;
+  resetToPatientDataFlow(): void;
+  switchToSchedulingFlow(number: string, flowType: 'date-first' | 'service-first' | 'dentist-first'): void;
 
   // Session persistence methods
   initializeSessionPersistence(): Promise<void>;

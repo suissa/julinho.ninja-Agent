@@ -519,10 +519,12 @@ export abstract class BaseAgent implements IAgent, AgentSpecification, AgentFlow
       this.globalMemory.markStageAsVisited(number, this.routingKey);
 
       // 5. Unsubscribe from this phone (agent job done)
-      await this.unsubscribeFromPhone(number);
+      const queueName = `queue-${this.agentName}-${number}`;
+      const routingKey = `phone.${number}`;
+      await this.sdkRabbitmq.unbind('chatbot.messages', queueName, routingKey);
 
       // 6. Activate next agent
-      await this.activateNextAgent(number);
+      await this.moveToNextAgent(number);
 
       console.log(`[${this.agentName}] Successfully completed processing for ${number}`);
 

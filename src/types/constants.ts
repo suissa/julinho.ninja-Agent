@@ -18,7 +18,13 @@ export const AGENT_ROUTING_KEYS = {
   PATIENT_NAME: 'patient.name',
   PATIENT_CPF: 'patient.cpf',
   PATIENT_EMAIL: 'patient.email',
-  PATIENT_BIRTH_DATE: 'patient.birthDate'
+  PATIENT_BIRTH_DATE: 'patient.birthDate',
+  // Scheduling agents
+  SCHEDULE_NEW: 'schedule.new',
+  SCHEDULE_DATE: 'schedule.date',
+  SCHEDULE_SERVICE: 'schedule.service',
+  SCHEDULE_DENTIST: 'schedule.dentist',
+  SCHEDULE_PAYMENT: 'schedule.payment'
 } as const;
 
 /**
@@ -30,13 +36,45 @@ export const WHATSAPP_ROUTING_KEYS = {
 } as const;
 
 /**
- * Default agent flow sequence
+ * Default agent flow sequence for patient data collection
  */
 export const DEFAULT_AGENTS_FLOW = [
   AGENT_ROUTING_KEYS.PATIENT_NAME,
   AGENT_ROUTING_KEYS.PATIENT_CPF,
   AGENT_ROUTING_KEYS.PATIENT_BIRTH_DATE,
   AGENT_ROUTING_KEYS.PATIENT_EMAIL
+] as const;
+
+/**
+ * Scheduling flow sequences based on user choice
+ */
+export const SCHEDULING_FLOWS = {
+  DATE_FIRST: [
+    AGENT_ROUTING_KEYS.SCHEDULE_DATE,
+    AGENT_ROUTING_KEYS.SCHEDULE_SERVICE,
+    AGENT_ROUTING_KEYS.SCHEDULE_DENTIST,
+    AGENT_ROUTING_KEYS.SCHEDULE_PAYMENT
+  ],
+  SERVICE_FIRST: [
+    AGENT_ROUTING_KEYS.SCHEDULE_SERVICE,
+    AGENT_ROUTING_KEYS.SCHEDULE_DATE,
+    AGENT_ROUTING_KEYS.SCHEDULE_DENTIST,
+    AGENT_ROUTING_KEYS.SCHEDULE_PAYMENT
+  ],
+  DENTIST_FIRST: [
+    AGENT_ROUTING_KEYS.SCHEDULE_DENTIST,
+    AGENT_ROUTING_KEYS.SCHEDULE_DATE,
+    AGENT_ROUTING_KEYS.SCHEDULE_SERVICE,
+    AGENT_ROUTING_KEYS.SCHEDULE_PAYMENT
+  ]
+} as const;
+
+/**
+ * Complete flow including patient data collection and scheduling
+ */
+export const COMPLETE_FLOW = [
+  ...DEFAULT_AGENTS_FLOW,
+  AGENT_ROUTING_KEYS.SCHEDULE_NEW
 ] as const;
 
 /**

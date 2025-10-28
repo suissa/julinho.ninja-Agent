@@ -1,0 +1,25 @@
+{
+  "number": "5515991957645",
+  "clientData": {
+    "number": "5515991957645",
+    "startTime": "2025-10-28T09:18:24.812Z",
+    "lastActivity": "2025-10-28T09:18:24.812Z"
+  },
+  "clientStage": {
+    "number": "5515991957645",
+    "currentStage": "patient.name",
+    "visitedStages": [],
+    "stageErrors": [],
+    "lastActivity": "2025-10-28T09:18:24.824Z"
+  },
+  "agentsFlow": [
+    "patient.name",
+    "patient.cpf",
+    "patient.birthDate",
+    "patient.email",
+    "schedule.new"
+  ],
+  "lastMessageSent": 1761643104823,
+  "createdAt": "2025-10-28T09:18:24.812Z",
+  "updatedAt": "2025-10-28T09:18:24.824Z"
+}

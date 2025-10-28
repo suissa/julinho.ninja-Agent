@@ -6,7 +6,7 @@
 import { IGlobalMemory } from './interfaces';
 import { ClientData, ClientStage } from '../types/client';
 import { SessionData, SessionPersistenceConfig } from '../types/session';
-import { DEFAULT_AGENTS_FLOW, TIMEOUTS } from '../types/constants';
+import { DEFAULT_AGENTS_FLOW, COMPLETE_FLOW, SCHEDULING_FLOWS, TIMEOUTS } from '../types/constants';
 import { FileSessionPersistence } from './SessionPersistence';
 import { TimeoutManager, TimeoutConfig } from './TimeoutManager';
 import { ConcurrentSessionManager } from './ConcurrentSessionManager';
@@ -54,33 +54,173 @@ export class GlobalMemory implements IGlobalMemory {
     this.resetAgentsFlow();
   }
 
-  // Flow management methods - Implementation in task 3.4
+  // Flow management methods - Implementation in task 3.4 and 11.6
   getNextAgent(currentStage?: string): string | null {
     if (!currentStage) {
-      // Se não tem stage atual, retorna o primeiro
-      return DEFAULT_AGENTS_FLOW[0] || null;
+      // Se não tem stage atual, retorna o primeiro do fluxo completo
+      return COMPLETE_FLOW[0] || null;
     }
     
-    // Encontrar o índice do stage atual
-    const currentIndex = DEFAULT_AGENTS_FLOW.indexOf(currentStage as any);
+    // Encontrar o índice do stage atual no fluxo completo
+    const currentIndex = COMPLETE_FLOW.indexOf(currentStage as any);
     
     if (currentIndex === -1) {
       // Stage atual não encontrado, retorna o primeiro
-      return DEFAULT_AGENTS_FLOW[0] || null;
+      return COMPLETE_FLOW[0] || null;
     }
     
     // Retorna o próximo stage na sequência
     const nextIndex = currentIndex + 1;
-    if (nextIndex < DEFAULT_AGENTS_FLOW.length) {
-      return DEFAULT_AGENTS_FLOW[nextIndex];
+    if (nextIndex < COMPLETE_FLOW.length) {
+      return COMPLETE_FLOW[nextIndex] || null;
     }
     
     return null; // Flow complete
   }
 
+  /**
+   * Get next agent for a specific user based on their dynamic flow
+   * @param number - User's phone number
+   * @param currentStage - Current stage in the flow
+   * @returns Next agent routing key or null if flow is complete
+   */
+  getNextAgentForUser(number: string, currentStage: string): string | null {
+    try {
+      const clientData = this.clientData.get(number);
+      
+      // Check if user has a dynamic scheduling flow
+      if (clientData && clientData.dynamicAgentsFlow) {
+        const dynamicFlow = clientData.dynamicAgentsFlow as string[];
+        const currentIndex = dynamicFlow.indexOf(currentStage);
+        
+        if (currentIndex !== -1) {
+          const nextIndex = currentIndex + 1;
+          if (nextIndex < dynamicFlow.length) {
+            return dynamicFlow[nextIndex] || null;
+          }
+          return null; // Dynamic flow complete
+        }
+      }
+      
+      // Fallback to default flow logic
+      return this.getNextAgent(currentStage);
+      
+    } catch (error) {
+      console.error(`Error getting next agent for user ${number}:`, error);
+      return this.getNextAgent(currentStage);
+    }
+  }
+
+  /**
+   * Set up dynamic scheduling flow for a user based on their choice
+   * @param number - User's phone number
+   * @param flowType - Type of flow (date-first, service-first, dentist-first)
+   */
+  setDynamicSchedulingFlow(number: string, flowType: 'date-first' | 'service-first' | 'dentist-first'): void {
+    let dynamicFlow: string[];
+    
+    switch (flowType) {
+      case 'date-first':
+        dynamicFlow = [...SCHEDULING_FLOWS.DATE_FIRST];
+        break;
+      case 'service-first':
+        dynamicFlow = [...SCHEDULING_FLOWS.SERVICE_FIRST];
+        break;
+      case 'dentist-first':
+        dynamicFlow = [...SCHEDULING_FLOWS.DENTIST_FIRST];
+        break;
+      default:
+        dynamicFlow = [...SCHEDULING_FLOWS.DATE_FIRST];
+        break;
+    }
+    
+    // Store the dynamic flow for this user
+    this.setClientData(number, 'dynamicAgentsFlow', dynamicFlow);
+    this.setClientData(number, 'schedulingFlowType', flowType);
+    
+    console.log(`Dynamic scheduling flow set for ${number}: ${flowType} -> ${dynamicFlow.join(' → ')}`);
+  }
+
+  /**
+   * Check if user is in scheduling phase
+   * @param number - User's phone number
+   * @returns true if user is in scheduling phase, false otherwise
+   */
+  isUserInSchedulingPhase(number: string): boolean {
+    const currentStage = this.getCurrentStage(number);
+    if (!currentStage) return false;
+    
+    const schedulingStages = [
+      'schedule.new',
+      'schedule.date',
+      'schedule.service', 
+      'schedule.dentist',
+      'schedule.payment'
+    ];
+    
+    return schedulingStages.includes(currentStage);
+  }
+
+  /**
+   * Get scheduling data for a user
+   * @param number - User's phone number
+   * @returns Scheduling data object or null if not found
+   */
+  getSchedulingData(number: string): any {
+    try {
+      const clientData = this.clientData.get(number);
+      if (!clientData) return null;
+      
+      return {
+        schedulingChoice: clientData.schedulingChoice,
+        schedulingFlowType: clientData.schedulingFlowType,
+        dynamicAgentsFlow: clientData.dynamicAgentsFlow,
+        selectedDate: clientData.selectedDate,
+        selectedDateFormatted: clientData.selectedDateFormatted,
+        selectedServiceId: clientData.selectedServiceId,
+        selectedServiceName: clientData.selectedServiceName,
+        selectedServicePrice: clientData.selectedServicePrice,
+        selectedServicePriceFormatted: clientData.selectedServicePriceFormatted,
+        selectedDentistId: clientData.selectedDentistId,
+        selectedDentistName: clientData.selectedDentistName,
+        selectedDentistSpecialty: clientData.selectedDentistSpecialty,
+        selectedPaymentId: clientData.selectedPaymentId,
+        selectedPaymentName: clientData.selectedPaymentName,
+        finalPrice: clientData.finalPrice,
+        finalPriceFormatted: clientData.finalPriceFormatted,
+        appointmentStatus: clientData.appointmentStatus
+      };
+    } catch (error) {
+      console.error(`Error getting scheduling data for ${number}:`, error);
+      return null;
+    }
+  }
+
   resetAgentsFlow(): void {
-    // Reset to default agent flow sequence
+    // Reset to complete flow sequence (patient data + scheduling)
+    this.agentsFlow = [...COMPLETE_FLOW];
+  }
+
+  /**
+   * Reset to patient data collection flow only
+   */
+  resetToPatientDataFlow(): void {
     this.agentsFlow = [...DEFAULT_AGENTS_FLOW];
+  }
+
+  /**
+   * Switch to scheduling flow for a specific user
+   * @param number - User's phone number
+   * @param flowType - Type of scheduling flow
+   */
+  switchToSchedulingFlow(number: string, flowType: 'date-first' | 'service-first' | 'dentist-first'): void {
+    this.setDynamicSchedulingFlow(number, flowType);
+    
+    // Update current stage to first scheduling agent
+    const dynamicFlow = this.getClientData(number).dynamicAgentsFlow as string[];
+    if (dynamicFlow && dynamicFlow.length > 0 && dynamicFlow[0]) {
+      this.setCurrentStage(number, dynamicFlow[0]);
+    }
   }
 
   // Client management methods - Implementation in task 3.1

@@ -185,7 +185,12 @@
   - Add performance monitoring and metrics collection
   - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5_
 
-- [x] 10. Create configuration and environment setup
+- [ ] 10. Create configuration and environment setup
+
+
+
+
+
 
   - Add environment variables for RabbitMQ connection settings
   - Create configuration files for agent messages and validation rules
@@ -193,18 +198,120 @@
   - Create startup scripts and process management
   - _Requirements: 12.1, 12.2, 12.3, 12.4_
 
-- [ ] 11. Fix BaseAgent compilation errors
+- [x] 11. Implement scheduling flow system
+
+
+
+
+
+  - [x] 11.1 Create ScheduleNewAgent class
+
+
+    - Implement agent that sends message: "O que você deseja definir nesse momento? 1- data, 2- serviço ou 3- dentista"
+    - Add validation for user choice (1, 2, or 3)
+    - Implement dynamic flow selection based on user choice
+    - _Requirements: 1.1, 2.1, 6.1, 6.2_
+
+  - [x] 11.2 Create ScheduleDateAgent class
+
+
+    - Implement date selection and validation
+    - Add available dates checking logic
+    - Store selected date in global memory
+    - _Requirements: 7.4, 8.4, 11.3_
+
+  - [x] 11.3 Create ScheduleDentistAgent class
+
+
+    - Implement dentist selection interface
+    - Add dentist availability validation
+    - Store selected dentist in global memory
+    - _Requirements: 7.1, 8.1, 11.1_
+
+
+
+  - [ ] 11.4 Create ScheduleServiceAgent class
+    - Implement service selection interface
+    - Add service validation and pricing
+    - Store selected service in global memory
+
+
+    - _Requirements: 7.2, 8.2, 11.2_
+
+  - [ ] 11.5 Create SchedulePaymentAgent class
+    - Implement payment method selection
+
+
+    - Add payment validation and confirmation
+    - Generate final appointment summary
+    - _Requirements: 7.3, 8.3, 11.4_
+
+
+
+  - [ ] 11.6 Update GlobalMemory for scheduling flows
+    - Add support for dynamic flow management based on user choice
+    - Implement flow switching: date-first, dentist-first, service-first
+    - Add scheduling data storage methods
+    - _Requirements: 6.1, 6.2, 6.3, 6.4_
+
+  - [ ] 11.7 Update ChatBot to initialize scheduling agents
+    - Add scheduling agents to ChatBot initialization
+    - Set up agent subscriptions for scheduling routing keys
+    - Update agents flow configuration
+    - _Requirements: 1.5, 1.6, 1.7_
+
+<!-- - [ ] 11. Fix BaseAgent compilation errors
 
 
   - Fix getNextAgent() method call to not pass currentStage parameter
   - Fix setCurrentStageSafe() method to return void instead of boolean
   - Add missing unsubscribeFromPhone() method implementation
   - Add missing activateNextAgent() method implementation
-  - _Requirements: 4.2, 4.3_
+  - _Requirements: 4.2, 4.3_ -->
 
-- [ ]* 12. Write integration tests
-  - Create tests for complete patient data collection flow
-  - Add tests for concurrent user sessions
-  - Implement error recovery and timeout scenario tests
-  - Add RabbitMQ integration tests with mock WhatsApp service
-  - _Requirements: All requirements validation_
+- [ ] 12. System validation and testing
+
+  - [ ] 12.1 Validate current patient data collection flow
+    - Test complete flow from GreetingAgent through PatientEmailAgent
+    - Verify data persistence and session management
+    - Test error handling and timeout scenarios
+    - _Requirements: 1.1, 2.1, 3.1, 4.1, 8.1, 8.2, 8.3, 8.4, 8.5_
+
+  - [ ] 12.2 Test concurrent session handling
+    - Verify multiple users can interact simultaneously
+    - Test session isolation and data integrity
+    - Validate memory management under load
+    - _Requirements: 13.1, 13.2, 13.3, 13.4, 13.5_
+
+  - [ ] 12.3 Validate RabbitMQ integration
+    - Test connection recovery and reconnection
+    - Verify message routing and delivery
+    - Test queue management and cleanup
+    - _Requirements: 5.1, 5.2, 5.3, 5.4, 12.1, 12.2, 12.3, 12.4, 12.5_
+
+  - [ ]* 12.4 Write automated integration tests
+    - Create tests for complete patient data collection flow
+    - Add tests for concurrent user sessions
+    - Implement error recovery and timeout scenario tests
+    - Add RabbitMQ integration tests with mock WhatsApp service
+    - _Requirements: All requirements validation_
+
+- [ ] 13. Documentation and deployment verification
+
+  - [ ] 13.1 Verify deployment configurations
+    - Test Docker deployment with docker-compose
+    - Validate PM2 configuration and process management
+    - Test systemd service configuration (Linux)
+    - _Requirements: 12.1, 12.2, 12.3, 12.4_
+
+  - [ ] 13.2 Update system documentation
+    - Document API endpoints and health checks
+    - Create troubleshooting guide for common issues
+    - Update configuration examples and environment variables
+    - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5_
+
+  - [ ]* 13.3 Performance optimization
+    - Optimize memory usage and garbage collection
+    - Implement connection pooling for RabbitMQ
+    - Add performance monitoring and alerting
+    - _Requirements: 9.5, 12.5, 13.1, 13.2, 13.3_

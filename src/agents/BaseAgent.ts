@@ -84,54 +84,71 @@ export abstract class BaseAgent implements IAgent, AgentSpecification, AgentFlow
   // Specification Pattern Implementation
 
   /**
-   * Verifica se este agent deve ser ativado para o telefone especificado
-   * Pesquisa na memória se este agent é o atual no fluxo
-   * Se verdadeiro, faz bind na exchange="chatbot.messages" + routingKey="phone.{telefone}"
+   * ESPECIFICAÇÃO canIActivate
+   * Verifica se o agente pode ser ativado ou não
+   * Recebe payload na fila de roteamento específica com telefone do usuário
+   * Verifica na memória se está marcado como agente atual
+   * Se sim → retorna true (pode ser ativado)
    */
-  public async isActivatedBy(command: AgentActivationCommand): Promise<boolean> {
+  public async canIActivate(command: AgentActivationCommand): Promise<boolean> {
     const { number } = command;
 
-    // 1. Verificar se este agent é o atual no fluxo
+    console.log(`🔍 [${this.agentName}] canIActivate check for ${number}`);
+
+    // Verificar na memória se este agent está marcado como agente atual
     const currentStage = this.globalMemory.getCurrentStage(number);
     const isCurrentAgent = currentStage === this.routingKey;
 
-    console.log(`🔍 [${this.agentName}] isActivatedBy check: currentStage=${currentStage}, routingKey=${this.routingKey}, isCurrentAgent=${isCurrentAgent}`);
+    console.log(`📋 [${this.agentName}] currentStage=${currentStage}, routingKey=${this.routingKey}, isCurrentAgent=${isCurrentAgent}`);
 
     if (!isCurrentAgent) {
-      console.log(`❌ [${this.agentName}] Not current agent for ${number}`);
+      console.log(`❌ [${this.agentName}] Não é o agente atual para ${number}`);
       return false;
     }
 
-    // 2. Verificar se este stage já foi visitado (não reprocessar)
+    // Verificar se este stage já foi visitado (não reprocessar)
     const clientStage = this.globalMemory.clientStages.get(number);
     if (clientStage && clientStage.visitedStages.has(this.routingKey)) {
-      console.log(`⏭️ [${this.agentName}] Stage ${this.routingKey} already visited for ${number}, skipping`);
-      // Mover para próximo agent automaticamente
+      console.log(`⏭️ [${this.agentName}] Stage ${this.routingKey} já visitado para ${number}, pulando`);
       await this.moveToNextAgent(number);
       return false;
     }
 
-    try {
-      // 3. Fazer bind na exchange="chatbot.messages" + routingKey="phone.{telefone}"
-      const queueName = `queue-${this.agentName}-${number}`;
-      const routingKey = `phone.${number}`;
+    console.log(`✅ [${this.agentName}] Pode ser ativado para ${number}`);
+    return true;
+  }
 
-      console.log(`🔗 [${this.agentName}] Binding to exchange: chatbot.messages, queue: ${queueName}, routingKey: ${routingKey}`);
+  /**
+   * Wrapper para compatibilidade - usa canIActivate
+   */
+  public async isActivatedBy(command: AgentActivationCommand): Promise<boolean> {
+    const canActivate = await this.canIActivate(command);
+    
+    if (canActivate) {
+      try {
+        // Fazer bind na exchange="chatbot.messages" + routingKey="phone.{telefone}"
+        const queueName = `queue-${this.agentName}-${command.number}`;
+        const routingKey = `phone.${command.number}`;
 
-      await this.sdkRabbitmq.subscribe(
-        'chatbot.messages',
-        queueName,
-        routingKey,
-        (message: UserMessage) => this.handleUserMessage(message)
-      );
+        console.log(`🔗 [${this.agentName}] Binding to exchange: chatbot.messages, queue: ${queueName}, routingKey: ${routingKey}`);
 
-      console.log(`✅ [${this.agentName}] Successfully bound to ${routingKey}`);
-      return true;
+        await this.sdkRabbitmq.subscribe(
+          'chatbot.messages',
+          queueName,
+          routingKey,
+          (message: UserMessage) => this.handleUserMessage(message)
+        );
 
-    } catch (error) {
-      console.error(`❌ [${this.agentName}] Failed to bind to phone.${number}:`, error);
-      return false;
+        console.log(`✅ [${this.agentName}] Successfully bound to ${routingKey}`);
+        return true;
+
+      } catch (error) {
+        console.error(`❌ [${this.agentName}] Failed to bind to phone.${command.number}:`, error);
+        return false;
+      }
     }
+
+    return false;
   }
 
   /**
@@ -220,13 +237,64 @@ export abstract class BaseAgent implements IAgent, AgentSpecification, AgentFlow
    * Obtém o próximo agent no fluxo
    */
   public getNextAgent(): string | null {
-    return this.globalMemory.getNextAgent();
+    // Para dados do paciente, usar FIFO original
+    if (['patient.name', 'patient.cpf', 'patient.birthDate', 'patient.email'].includes(this.routingKey)) {
+      return this.globalMemory.getNextAgent(); // FIFO
+    }
+    // Para agendamento, usar lógica específica do agente
+    return null;
   }
 
   /**
    * Marca este agent como satisfeito e move para o próximo
    */
+  /**
+   * ESPECIFICAÇÃO canIActivateNextAgent
+   * Verifica se o Agent atual deve ativar o próximo Agente
+   * Deve ter feito unbind na routingKey do telefone E ter marcado seu stage como visitado/concluído
+   * E ter colocado a informação na Memory E pegar a routingKey do próximo Agent
+   */
+  protected async canIActivateNextAgent(number: string): Promise<boolean> {
+    console.log(`🔍 [${this.agentName}] canIActivateNextAgent check for ${number}`);
+
+    // 1. Verificar se stage foi marcado como visitado/concluído
+    const clientStage = this.globalMemory.clientStages.get(number);
+    if (!clientStage || !clientStage.visitedStages.has(this.routingKey)) {
+      console.log(`❌ [${this.agentName}] Stage ${this.routingKey} não foi marcado como visitado para ${number}`);
+      return false;
+    }
+
+    // 2. Verificar se informação foi colocada na Memory (dados do cliente)
+    const clientData = this.globalMemory.clientData.get(number);
+    if (!clientData) {
+      console.log(`❌ [${this.agentName}] Dados do cliente não encontrados na Memory para ${number}`);
+      return false;
+    }
+
+    // 3. Verificar se consegue pegar routingKey do próximo Agent
+    const nextAgentRoutingKey = this.getNextAgent();
+    if (!nextAgentRoutingKey) {
+      console.log(`✅ [${this.agentName}] Fluxo completo - não há próximo agente para ${number}`);
+      return true; // Pode "ativar" (finalizar fluxo)
+    }
+
+    console.log(`✅ [${this.agentName}] Pode ativar próximo agente ${nextAgentRoutingKey} para ${number}`);
+    return true;
+  }
+
+  /**
+   * Move para próximo agente seguindo especificação canIActivateNextAgent
+   */
   public async moveToNextAgent(number: string): Promise<void> {
+    console.log(`🔄 [${this.agentName}] Iniciando transição para próximo agente - ${number}`);
+
+    // ESPECIFICAÇÃO: Verificar se pode ativar próximo agente
+    const canActivateNext = await this.canIActivateNextAgent(number);
+    if (!canActivateNext) {
+      console.log(`🚫 [${this.agentName}] Bloqueado ativação do próximo agente pela especificação canIActivateNextAgent`);
+      return;
+    }
+
     const nextAgentRoutingKey = this.getNextAgent();
 
     console.log(`🔄 [${this.agentName}] Flow transition: ${this.routingKey} → ${nextAgentRoutingKey || 'COMPLETED'} for ${number}`);
@@ -234,7 +302,17 @@ export abstract class BaseAgent implements IAgent, AgentSpecification, AgentFlow
     if (nextAgentRoutingKey) {
       console.log(`🚀 [${this.agentName}] Moving to next agent: ${nextAgentRoutingKey}`);
 
-      // 1. Atualizar stage atual (thread-safe)
+      // 1. Fazer unbind na routingKey do telefone (conforme especificação)
+      try {
+        const queueName = `queue-${this.agentName}-${number}`;
+        const routingKey = `phone.${number}`;
+        await this.sdkRabbitmq.unbind('chatbot.messages', queueName, routingKey);
+        console.log(`🔓 [${this.agentName}] Unbind realizado para ${routingKey}`);
+      } catch (error) {
+        console.error(`❌ [${this.agentName}] Erro no unbind:`, error);
+      }
+
+      // 2. Atualizar stage atual (thread-safe)
       try {
         await this.setCurrentStageSafe(number, nextAgentRoutingKey);
         console.log(`📝 [${this.agentName}] Stage updated to ${nextAgentRoutingKey} for ${number}`);
@@ -243,47 +321,22 @@ export abstract class BaseAgent implements IAgent, AgentSpecification, AgentFlow
         return;
       }
 
-      // 2. Criar comando de ativação
+      // 3. Resetar flag MESSAGE_SENT para próximo agente
+      this.globalMemory.resetMessageSentFlag(number);
+
+      // 4. Criar comando de ativação
       const activationCommand: AgentActivationCommand = {
         number: number,
         sender: this.agentName,
         timestamp: Date.now()
       };
 
-      // 3. Enviar comando para próximo agent
+      // 5. Enviar comando para próximo agent
       await this.sdkRabbitmq.publish('chatbot.agents', nextAgentRoutingKey, activationCommand);
 
       console.log(`✅ [${this.agentName}] Next agent ${nextAgentRoutingKey} activated for ${number}`);
-
-      // 4. Log do estado atual da sessão
-      const clientStage = this.globalMemory.clientStages.get(number);
-      if (clientStage) {
-        console.log(`📊 [${this.agentName}] Session state for ${number}:`, {
-          currentStage: clientStage.currentStage,
-          visitedStages: Array.from(clientStage.visitedStages),
-          errorCounts: Object.fromEntries(clientStage.stageErrors)
-        });
-      }
     } else {
       console.log(`🏁 [${this.agentName}] Flow completed for ${number} - no more agents`);
-
-      // Enviar mensagem de conclusão se for o último agente
-      if (this.routingKey === 'patient.email') {
-        try {
-          const clientData = this.globalMemory.clientData.get(number);
-          const completionMessage = `✅ Obrigado! Suas informações foram coletadas com sucesso.\n\n` +
-            `📋 Resumo dos dados coletados:\n` +
-            `👤 Nome: ${clientData?.name || 'Não informado'}\n` +
-            `🆔 CPF: ${clientData?.cpf || 'Não informado'}\n` +
-            `🎂 Data de Nascimento: ${clientData?.birthDate || 'Não informada'}\n` +
-            `📧 Email: ${clientData?.email || 'Não informado'}\n\n` +
-            `Seus dados estão seguros conosco. Em breve entraremos em contato!`;
-          
-          await this.sendToWhatsApp(number, completionMessage);
-        } catch (error) {
-          console.error(`❌ [${this.agentName}] Error sending completion message:`, error);
-        }
-      }
 
       // Log final da sessão
       const clientData = this.globalMemory.clientData.get(number);
@@ -303,37 +356,40 @@ export abstract class BaseAgent implements IAgent, AgentSpecification, AgentFlow
 
   // Core agent functionality methods
 
+
+
   /**
-   * Verifica se pode enviar mensagem (evita duplicatas)
+   * ESPECIFICAÇÃO canSendWhatsAppMessage
+   * Verifica se o agente pode enviar uma mensagem para o WhatsApp do usuário
+   * Precisa estar ativado E estar ouvindo a routingKey do WhatsApp do usuário
+   * E validar na memória se é o agente atual E principalmente se a flag MESSAGE_SENT for false
+   * Se tudo OK → retorna true
    */
-  private canSendMessage(number: string, message: string): boolean {
-    const lastMessage = this.lastMessageSent.get(number);
-    if (!lastMessage) return true;
+  protected canSendWhatsAppMessage(number: string): boolean {
+    console.log(`🔍 [${this.agentName}] canSendWhatsAppMessage check for ${number}`);
 
-    const timeDiff = Date.now() - lastMessage.timestamp;
-    const isSameMessage = lastMessage.message === message;
-    const tooRecent = timeDiff < 1000; // 1 segundo
-
-    if (isSameMessage && tooRecent) {
-      console.log(`🚫 [${this.agentName}] Duplicate message blocked for ${number}: "${message}"`);
+    // 1. Verificar se está ativado (é o agente atual)
+    const currentStage = this.globalMemory.getCurrentStage(number);
+    const isCurrentAgent = currentStage === this.routingKey;
+    
+    if (!isCurrentAgent) {
+      console.log(`❌ [${this.agentName}] Não é o agente atual para ${number}`);
       return false;
     }
 
+    // 2. Verificar flag MESSAGE_SENT (deve ser false para poder enviar)
+    const canSend = this.globalMemory.canSendMessage(number);
+    if (!canSend) {
+      console.log(`❌ [${this.agentName}] MESSAGE_SENT flag impede envio para ${number}`);
+      return false;
+    }
+
+    console.log(`✅ [${this.agentName}] Pode enviar mensagem para ${number}`);
     return true;
   }
 
   /**
-   * Registra mensagem enviada
-   */
-  private recordSentMessage(number: string, message: string): void {
-    this.lastMessageSent.set(number, {
-      message,
-      timestamp: Date.now()
-    });
-  }
-
-  /**
-   * Send message to WhatsApp user with duplicate prevention
+   * Send message to WhatsApp user seguindo especificação canSendWhatsAppMessage
    * @param number - User's phone number
    * @param message - Message to send
    */
@@ -345,9 +401,10 @@ export abstract class BaseAgent implements IAgent, AgentSpecification, AgentFlow
       throw new Error('Message cannot be empty');
     }
 
-    // Verificar se pode enviar mensagem (evitar duplicatas)
-    if (!this.canSendMessage(number, message)) {
-      return; // Bloquear mensagem duplicada
+    // ESPECIFICAÇÃO: Verificar se pode enviar mensagem
+    if (!this.canSendWhatsAppMessage(number)) {
+      console.log(`🚫 [${this.agentName}] Bloqueado envio de mensagem para ${number} pela especificação canSendWhatsAppMessage`);
+      return; // Bloquear conforme especificação
     }
 
     const startTime = Date.now();
@@ -359,8 +416,7 @@ export abstract class BaseAgent implements IAgent, AgentSpecification, AgentFlow
         text: message
       });
 
-      // Registrar mensagem enviada
-      this.recordSentMessage(number, message);
+      // ESPECIFICAÇÃO: Marcar MESSAGE_SENT como true após enviar
       this.globalMemory.markMessageSent(number);
 
       const duration = Date.now() - startTime;

@@ -56,11 +56,34 @@ export class GlobalMemory implements IGlobalMemory {
 
   // Flow management methods - Implementation in task 3.4 (seguindo especificação FIFO)
   getNextAgent(): string | null {
-    // Remove e retorna o primeiro item da lista (FIFO) conforme especificação
+    // Para dados do paciente: FIFO (remove da lista)
+    // Para agendamento: usa fluxo dinâmico por usuário
     if (this.agentsFlow.length > 0) {
       return this.agentsFlow.shift() || null;
     }
     return null; // Flow complete
+  }
+
+  /**
+   * Get next agent based on current stage (for scheduling flow)
+   */
+  getNextAgentByStage(currentStage: string): string | null {
+    const patientFlow = ['patient.name', 'patient.cpf', 'patient.birthDate', 'patient.email'];
+    const currentIndex = patientFlow.indexOf(currentStage);
+
+    if (currentIndex !== -1) {
+      // Still in patient data collection
+      const nextIndex = currentIndex + 1;
+      if (nextIndex < patientFlow.length) {
+        return patientFlow[nextIndex] || null;
+      } else {
+        // Finished patient data, go to scheduling
+        return 'schedule.new';
+      }
+    }
+
+    // Already in scheduling phase - let individual agents handle their flow
+    return null;
   }
 
   /**
@@ -182,7 +205,7 @@ export class GlobalMemory implements IGlobalMemory {
   }
 
   resetAgentsFlow(): void {
-    // Reset to default agent flow sequence (patient data only)
+    // Reset to patient data flow only (scheduling is handled dynamically)
     this.agentsFlow = [...DEFAULT_AGENTS_FLOW];
   }
 
@@ -395,21 +418,19 @@ export class GlobalMemory implements IGlobalMemory {
     return clientStage.stageErrors.get(stage) || 0;
   }
 
-  // Message control methods - Implementation in task 3.3
+  // Message control methods - Seguindo especificação canSendWhatsAppMessage
   canSendMessage(number: string): boolean {
     if (!number || number.trim() === '') {
       return false;
     }
 
-    const lastSent = this.lastMessageSent.get(number);
-    if (!lastSent) {
-      return true; // No previous message sent
+    const clientData = this.clientData.get(number);
+    if (!clientData) {
+      return true; // Novo cliente, pode enviar
     }
 
-    const timeDiff = Date.now() - lastSent;
-    const MIN_INTERVAL = 2000; // 2 seconds minimum between messages
-
-    return timeDiff >= MIN_INTERVAL;
+    // Verificar flag MESSAGE_SENT conforme especificação
+    return !clientData.messageSent; // Se messageSent é false, pode enviar
   }
 
   markMessageSent(number: string): void {
@@ -417,7 +438,31 @@ export class GlobalMemory implements IGlobalMemory {
       throw new Error('Phone number cannot be empty');
     }
 
+    // Marcar flag MESSAGE_SENT como true conforme especificação
+    let clientData = this.clientData.get(number);
+    if (!clientData) {
+      clientData = {
+        number,
+        startTime: new Date(),
+        lastActivity: new Date(),
+        messageSent: true
+      };
+    } else {
+      clientData.messageSent = true;
+      clientData.lastActivity = new Date();
+    }
+    
+    this.clientData.set(number, clientData);
     this.lastMessageSent.set(number, Date.now());
+  }
+
+  // Resetar flag MESSAGE_SENT quando agente muda
+  resetMessageSentFlag(number: string): void {
+    const clientData = this.clientData.get(number);
+    if (clientData) {
+      clientData.messageSent = false;
+      this.clientData.set(number, clientData);
+    }
   }
 
   // Cleanup methods - Implementation in task 3.4

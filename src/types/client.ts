@@ -12,6 +12,9 @@ export interface ClientData {
   startTime: Date;
   lastActivity: Date;
   
+  // Control flags
+  messageSent?: boolean | undefined; // Flag MESSAGE_SENT conforme especificação
+  
   // Scheduling fields
   schedulingChoice?: string | undefined;
   schedulingFlowType?: string | undefined;

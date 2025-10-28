@@ -20,7 +20,13 @@ export class GlobalMemory implements IGlobalMemory {
   public clientStages: Map<string, ClientStage> = new Map();
   public lastMessageSent: Map<string, number> = new Map();
 
+  // CORREÇÃO: Fila POR USUÁRIO
+  private userFlows: Map<string, string[]> = new Map();
 
+  // Método para acessar fila do usuário sem consumir
+  getUserFlow(number: string): string[] | null {
+    return this.userFlows.get(number) || null;
+  }
 
   private sessionPersistence: FileSessionPersistence;
   private timeoutManager: TimeoutManager;
@@ -286,19 +292,8 @@ export class GlobalMemory implements IGlobalMemory {
       this.userFlows.set(number, userFlow);
       console.log(`🆕 [GlobalMemory] Fila individual criada para ${number}: ${userFlow.join(' → ')}`);
     }
-  }
 
-    // Initialize client stage if not exists
-    if (!this.clientStages.has(number)) {
-      const clientStage: ClientStage = {
-        number,
-        currentStage: 'patient.name', // Start with first agent
-        visitedStages: new Set(),
-        stageErrors: new Map(),
-        lastActivity: new Date()
-      };
-      this.clientStages.set(number, clientStage);
-    }
+    console.log(`✅ [GlobalMemory] Cliente ${number} adicionado com sucesso`);
   }
 
   hasClient(number: string): boolean {
@@ -339,7 +334,9 @@ export class GlobalMemory implements IGlobalMemory {
         clientData.currentAgent = value;
         break;
       default:
-        throw new Error(`Unknown field: ${field}`);
+        // For dynamic fields, add them to the object
+        (clientData as any)[field] = value;
+        break;
     }
 
     // Update last activity

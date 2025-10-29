@@ -129,9 +129,9 @@ export abstract class BaseAgent implements IAgent, AgentSpecification, AgentFlow
     
     if (canActivate) {
       try {
-        // Ouvir mensagens de usuário em uma fila única por agente, via routing key wildcard
-        const queueName = `agent-msg-${this.agentName}`;
-        const routingKey = `agent.msg.*`;
+        // Ouvir mensagens do USUÁRIO por-usuário para este agente
+        const queueName = `agent-msg-${this.agentName}-${command.number}`;
+        const routingKey = `agent.msg.${command.number}`;
 
         console.log(`🔗 [${this.agentName}] Binding to exchange: agents, queue: ${queueName}, routingKey: ${routingKey}`);
 
@@ -154,7 +154,7 @@ export abstract class BaseAgent implements IAgent, AgentSpecification, AgentFlow
         return true;
 
       } catch (error) {
-        console.error(`❌ [${this.agentName}] Failed to bind to agent.msg.*:`, error);
+        console.error(`❌ [${this.agentName}] Failed to bind to ${`agent.msg.${command.number}`}:`, error);
         return false;
       }
     }
@@ -217,7 +217,17 @@ export abstract class BaseAgent implements IAgent, AgentSpecification, AgentFlow
       await this.markStageAsVisitedSafe(number, this.routingKey);
       console.log(`✅ [${this.agentName}] Stage ${this.routingKey} marked as visited for ${number}`);
 
-      // 2. Mover para próximo agent (fila única por agente permanece ligada)
+      // 2. Unbind por-usuário na exchange 'agents' (agent.msg.{number})
+      try {
+        const queueName = `agent-msg-${this.agentName}-${number}`;
+        const routingKey = `agent.msg.${number}`;
+        await this.sdkRabbitmq.unbind('agents', queueName, routingKey);
+        console.log(`🔓 [${this.agentName}] Unbind realizado para ${routingKey}`);
+      } catch (error) {
+        console.error(`❌ [${this.agentName}] Erro no unbind (agents):`, error);
+      }
+
+      // 3. Mover para próximo agent
       await this.moveToNextAgent(number);
 
       console.log(`🎯 [${this.agentName}] Satisfaction completed for ${number}`);
@@ -312,8 +322,8 @@ export abstract class BaseAgent implements IAgent, AgentSpecification, AgentFlow
           (this.globalMemory as any).setDynamicSchedulingFlow(number, 'service-first');
         }
       } catch {}
-      // Reverter para comportamento anterior: iniciar por schedule.service
-      nextAgentRoutingKey = 'schedule.service';
+      // Especificação: iniciar por schedule.new (escolha do paciente)
+      nextAgentRoutingKey = 'schedule.new';
       console.log(`🔀 [${this.agentName}] Patient flow completed. Starting scheduling at ${nextAgentRoutingKey} for ${number}`);
     }
 
@@ -525,7 +535,8 @@ export abstract class BaseAgent implements IAgent, AgentSpecification, AgentFlow
 
     const number = message.number;
     const correlationId = message.correlationId || '';
-    const msgTs = Number(message.timestamp || 0);
+    const rawTs = Number(message.timestamp || 0);
+    const msgTs = rawTs > 1e12 ? Math.floor(rawTs / 1000) : rawTs; // normaliza para segundos
 
     // Ignorar mensagens mais antigas do que a ativação atual (backlog)
     const lastActTs = this.lastActivationTimestampByUser.get(number);

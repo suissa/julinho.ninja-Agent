@@ -27,23 +27,13 @@ const SystemRoutingKeyStamp = STAMP<"system.routing.key">();
 const SystemAgentNameStamp = STAMP<"system.agent.name">();
 
 export const SystemRoutingKey = (() => ({
-  of: (v: unknown): SystemRoutingKey => {
-    const s = String(v);
-    if (!s || s.trim().length === 0) throw new TypeError("routing key não pode ser vazia");
-    if (!/^[a-zA-Z][a-zA-Z0-9._-]*$/.test(s)) throw new TypeError("routing key deve conter apenas letras, números, pontos, underscores e hífens");
-    return SystemRoutingKeyStamp.of(s);
-  },
+  of: (v: unknown): SystemRoutingKey => SystemRoutingKeyStamp.of(String(v)),
   un: (v: SystemRoutingKey): string => SystemRoutingKeyStamp.un(v),
   make: (value: string): SystemRoutingKey => SystemRoutingKey.of(value),
 }))();
 
 export const SystemAgentName = (() => ({
-  of: (v: unknown): SystemAgentName => {
-    const s = String(v);
-    if (!s || s.trim().length === 0) throw new TypeError("nome do agente não pode ser vazio");
-    if (!/^[a-zA-Z][a-zA-Z0-9._-]*$/.test(s)) throw new TypeError("nome do agente deve conter apenas letras, números, pontos, underscores e hífens");
-    return SystemAgentNameStamp.of(s);
-  },
+  of: (v: unknown): SystemAgentName => SystemAgentNameStamp.of(String(v)),
   un: (v: SystemAgentName): string => SystemAgentNameStamp.un(v),
   make: (value: string): SystemAgentName => SystemAgentName.of(value),
 }))();
@@ -121,13 +111,10 @@ export const TIMEOUTS = {
 // Default Values
 export const DEFAULT_VALUES = {
   NAME: 'Nome Não Informado',
-  get CPF() { return PatientCpf.makeDefault(); }, // Lazy loading - só executa quando acessado
-  EMAIL: PatientEmail.make('nao-informado@sistema.com'), // Email padrão para erros
+  CPF: '00000000000',
+  EMAIL: 'nao-informado@sistema.com',
   BIRTH_DATE: '01/01/1970'
 } as const;
-
-// Função para obter CPF padrão quando necessário
-export const getDefaultCpf = (): PatientCpf => PatientCpf.makeDefault();
 
 // Agent Messages
 export const AGENT_MESSAGES = {

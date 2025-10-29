@@ -1,0 +1,109 @@
+{
+  "agents": {
+    "greeting": {
+      "name": "GreetingAgent",
+      "routingKey": "greeting",
+      "messages": {
+        "welcome": "Olá! Bem-vindo ao nosso sistema de atendimento. Vou coletar algumas informações suas para prosseguirmos.",
+        "existingClient": "Olá novamente! Vamos continuar de onde paramos."
+      },
+      "timeouts": {
+        "userResponse": 30000,
+        "reminderTimeout": 60000
+      }
+    },
+    "patientName": {
+      "name": "PatientNameAgent",
+      "routingKey": "patient.name",
+      "messages": {
+        "request": "Por favor, informe seu nome completo:",
+        "invalid": "Por favor, forneça um nome válido com pelo menos 2 palavras.",
+        "retry": "Informação inválida (tentativa {attempt}/3). Por favor, informe seu nome completo:",
+        "defaultSet": "Após 3 tentativas, definindo valor padrão. Continuando..."
+      },
+      "validation": {
+        "minWords": 2,
+        "maxLength": 100,
+        "allowedChars": "^[a-zA-ZÀ-ÿ\\s'-]+$"
+      },
+      "defaultValue": "Nome Não Informado",
+      "timeouts": {
+        "userResponse": 30000,
+        "reminderTimeout": 60000
+      }
+    },
+    "patientCPF": {
+      "name": "PatientCPFAgent",
+      "routingKey": "patient.cpf",
+      "messages": {
+        "request": "Agora preciso do seu CPF (apenas números):",
+        "invalid": "CPF inválido. Por favor, forneça um CPF válido com 11 dígitos.",
+        "retry": "Informação inválida (tentativa {attempt}/3). Agora preciso do seu CPF (apenas números):",
+        "defaultSet": "Após 3 tentativas, definindo valor padrão. Continuando..."
+      },
+      "validation": {
+        "format": "^\\d{11}$",
+        "validateChecksum": true
+      },
+      "defaultValue": "00000000000",
+      "timeouts": {
+        "userResponse": 30000,
+        "reminderTimeout": 60000
+      }
+    },
+    "patientBirthDate": {
+      "name": "PatientBirthDateAgent",
+      "routingKey": "patient.birthDate",
+      "messages": {
+        "request": "Qual sua data de nascimento? (formato: DD/MM/AAAA)",
+        "invalid": "Data inválida. Por favor, use o formato DD/MM/AAAA e forneça uma data válida.",
+        "retry": "Informação inválida (tentativa {attempt}/3). Qual sua data de nascimento? (formato: DD/MM/AAAA)",
+        "defaultSet": "Após 3 tentativas, definindo valor padrão. Continuando..."
+      },
+      "validation": {
+        "format": "^\\d{2}/\\d{2}/\\d{4}$",
+        "minAge": 0,
+        "maxAge": 120
+      },
+      "defaultValue": "01/01/1970",
+      "timeouts": {
+        "userResponse": 30000,
+        "reminderTimeout": 60000
+      }
+    },
+    "patientEmail": {
+      "name": "PatientEmailAgent",
+      "routingKey": "patient.email",
+      "messages": {
+        "request": "Por último, informe seu e-mail:",
+        "invalid": "E-mail inválido. Por favor, forneça um e-mail válido.",
+        "retry": "Informação inválida (tentativa {attempt}/3). Por último, informe seu e-mail:",
+        "defaultSet": "Após 3 tentativas, definindo valor padrão. Continuando...",
+        "completion": "Obrigado! Coletamos todas as informações necessárias:\\n\\nNome: {name}\\nCPF: {cpf}\\nData de Nascimento: {birthDate}\\nE-mail: {email}\\n\\nSeu atendimento foi registrado com sucesso!"
+      },
+      "validation": {
+        "format": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$",
+        "maxLength": 254
+      },
+      "defaultValue": "nao-informado@sistema.com",
+      "timeouts": {
+        "userResponse": 30000,
+        "reminderTimeout": 60000
+      }
+    }
+  },
+  "flow": {
+    "defaultFlow": ["patient.name", "patient.cpf", "patient.birthDate", "patient.email"],
+    "retryPolicy": {
+      "maxRetries": 3,
+      "retryDelay": 1000
+    }
+  },
+  "system": {
+    "duplicateMessagePrevention": {
+      "minInterval": 2000
+    },
+    "sessionTimeout": 1800000,
+    "cleanupInterval": 300000
+  }
+}

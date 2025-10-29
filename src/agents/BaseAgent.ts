@@ -454,7 +454,7 @@ export abstract class BaseAgent implements IAgent, AgentSpecification, AgentFlow
     const activationCommand: AgentActivationCommand = {
       number: payload.number,
       sender: payload.sender || 'unknown',
-      timestamp: payload.timestamp || TimeTimestampUnix.make(Date.now()) as TimeTimestampUnix
+      timestamp: payload.timestamp || TimeTimestampUnix.make(Math.floor(Date.now() / 1000)) as TimeTimestampUnix
     } as AgentActivationCommand;
 
     console.log(`🎯 [${this.agentName}] Activation command criado para ${payload.number}`);

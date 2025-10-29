@@ -565,27 +565,23 @@ export class GlobalMemory implements IGlobalMemory {
     this.resetAgentsFlow();
   }
 
-  // Clear all sessions and clean persistence
-  async clearAllSessions(): Promise<void> {
-    this.logger.info('Clearing all sessions...');
-
-    // Clear in-memory data
-    this.clear();
-
-    // Clear persistence files
-    try {
-      await this.sessionPersistence.clearAllSessions();
-      this.logger.info('All sessions cleared from persistence');
-    } catch (error) {
-      this.logger.error('Error clearing sessions from persistence:', error);
-    }
-  }
 
   // Session persistence methods - Implementation in task 8.1
   async initializeSessionPersistence(): Promise<void> {
     await this.sessionPersistence.initialize();
     this.concurrentSessionManager.initialize();
     this.logger.info('Session persistence and concurrent session manager initialized');
+  }
+
+  // Clear all session files
+  async clearAllSessions(): Promise<void> {
+    try {
+      await this.sessionPersistence.clearAllSessions();
+      this.logger.info('All session files cleared');
+    } catch (error) {
+      this.logger.error('Error clearing session files:', error);
+      throw error;
+    }
   }
 
   async shutdownSessionPersistence(): Promise<void> {

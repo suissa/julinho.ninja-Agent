@@ -153,10 +153,6 @@ export interface SystemConfig {
     sanitizeUserData: SystemSanitizeData;
   };
   sessionPersistence: SessionPersistenceConfig;
-  memoryCleanup: {
-    clearOnStartup: boolean;
-    maxSessionAgeHours?: number;
-  };
 }
 
 /**

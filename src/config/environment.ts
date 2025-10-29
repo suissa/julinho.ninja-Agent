@@ -90,10 +90,6 @@ export function createChatBotConfig(): ChatBotConfig {
       sanitizeUserData: SystemSanitizeData.make(process.env.SANITIZE_USER_DATA === 'true' || env.NODE_ENV === 'production') as any,
     },
     sessionPersistence: sessionPersistenceConfig,
-    memoryCleanup: {
-      clearOnStartup: process.env.CLEAR_MEMORY_ON_STARTUP === 'true',
-      maxSessionAgeHours: parseInt(process.env.MAX_SESSION_AGE_HOURS || '24', 10)
-    },
   };
 
   return {

@@ -74,21 +74,19 @@ export class ChatBot {
       const memoryInitTime = this.logger.endPerformanceTimer('memory-init');
       this.logger.performanceMetric('memory_initialization', memoryInitTime);
 
-      // 4.1 Memory cleanup if configured
-      if (config.system.memoryCleanup.clearOnStartup) {
-        this.logger.startPerformanceTimer('memory-cleanup');
-        this.logger.info('Performing memory cleanup on startup...');
-        await this.globalMemory.clearAllSessions();
-        this.logger.info('Memory cleanup completed');
-        const cleanupTime = this.logger.endPerformanceTimer('memory-cleanup');
-        this.logger.performanceMetric('memory_cleanup_on_startup', cleanupTime);
-      } else {
-        // 4.2 Restore sessions from persistence
-        this.logger.startPerformanceTimer('session-restore');
-        await this.globalMemory.restoreAllSessions();
-        const sessionRestoreTime = this.logger.endPerformanceTimer('session-restore');
-        this.logger.performanceMetric('session_restoration', sessionRestoreTime);
-      }
+      // 4.1 Clear session files on startup
+      this.logger.startPerformanceTimer('session-cleanup');
+      this.logger.info('Clearing old session files...');
+      await this.clearSessionFiles();
+      this.logger.info('Session files cleared');
+      const sessionCleanupTime = this.logger.endPerformanceTimer('session-cleanup');
+      this.logger.performanceMetric('session_cleanup', sessionCleanupTime);
+
+      // 4.2 Restore sessions from persistence
+      this.logger.startPerformanceTimer('session-restore');
+      await this.globalMemory.restoreAllSessions();
+      const sessionRestoreTime = this.logger.endPerformanceTimer('session-restore');
+      this.logger.performanceMetric('session_restoration', sessionRestoreTime);
 
       // 4.2 Start periodic session cleanup
       this.startPeriodicSessionCleanup();
@@ -109,7 +107,8 @@ export class ChatBot {
       this.logger.performanceMetric('chatbot_initialization_complete', totalInitTime, {
         components: {
           rabbitmq: rabbitmqInitTime,
-          cleanup: cleanupTime,
+          cleanup: sessionCleanupTime,
+          sessionCleanup: sessionCleanupTime,
           memory: memoryInitTime,
           // sessionRestore: sessionRestoreTime,
           agents: agentsInitTime
@@ -285,10 +284,20 @@ export class ChatBot {
     this.logger.info('Periodic session cleanup started', { intervalMinutes: 10 });
   }
 
+  // Clear session files on startup
+  private async clearSessionFiles(): Promise<void> {
+    try {
+      await this.globalMemory.clearAllSessions();
+    } catch (error) {
+      this.logger.error('Error clearing session files:', error);
+      // Don't throw - this shouldn't stop startup
+    }
+  }
+
   public async shutdown(): Promise<void> {
     const shutdownStartTime = Date.now();
     this.logger.info('ChatBot shutdown initiated');
-    
+
     try {
       if (this.globalMemory) {
         this.logger.startPerformanceTimer('memory-shutdown');
@@ -297,18 +306,18 @@ export class ChatBot {
         const memoryShutdownTime = this.logger.endPerformanceTimer('memory-shutdown');
         this.logger.performanceMetric('memory_shutdown', memoryShutdownTime);
       }
-      
+
       if (this.sdkRabbitmq) {
         this.logger.startPerformanceTimer('rabbitmq-shutdown');
         await this.sdkRabbitmq.close();
         const rabbitmqShutdownTime = this.logger.endPerformanceTimer('rabbitmq-shutdown');
         this.logger.performanceMetric('rabbitmq_shutdown', rabbitmqShutdownTime);
       }
-      
+
       const totalShutdownTime = Date.now() - shutdownStartTime;
       this.logger.performanceMetric('chatbot_shutdown_complete', totalShutdownTime);
       this.logger.info('ChatBot shutdown completed', undefined, undefined, undefined, totalShutdownTime);
-      
+
       // Shutdown logger last to ensure all logs are flushed
       this.logger.shutdown();
     } catch (error) {

@@ -64,14 +64,14 @@ export class GreetingAgent {
       return;
     }
     
-    // Enviar mensagem inicial de boas-vindas (primeiro prompt)
+    // Enviar o primeiro prompt do fluxo (nome)
     await this.sdkRabbitmq.publish('whatsapp.message.text', 'send', {
       number,
       text: AGENT_MESSAGES.PATIENT_NAME.REQUEST
     });
     console.log(`GreetingAgent: Welcome message sent to ${number}`);
 
-    // Evitar mensagem duplicada pelo PatientNameAgent: marcar como enviada para este agente
+    // Evitar duplicidade: marcar que o PatientNameAgent já enviou mensagem
     try {
       (this.globalMemory as any).markMessageSentForAgent(number, 'patient.name');
       console.log(`🔒 [GreetingAgent] MESSAGE_SENT marcado para patient.name em ${number}`);

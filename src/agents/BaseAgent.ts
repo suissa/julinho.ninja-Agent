@@ -22,6 +22,7 @@ export abstract class BaseAgent implements IAgent, AgentSpecification, AgentFlow
   private processingUsers: Set<string> = new Set();
   private lastMessageSent: Map<string, { message: string; timestamp: number }> = new Map();
   private recentCorrelationIds: Map<string, number> = new Map(); // correlationId -> epochMs
+  private lastActivationTimestampByUser: Map<string, number> = new Map();
 
   /**
    * Constructor for BaseAgent
@@ -140,6 +141,14 @@ export abstract class BaseAgent implements IAgent, AgentSpecification, AgentFlow
           routingKey,
           (message: UserMessage) => this.handleUserMessage(message)
         );
+
+        // Purga mensagens antigas do ciclo anterior (evita processar backlog)
+        try {
+          await this.sdkRabbitmq.purgeQueue(queueName);
+          console.log(`🧹 [${this.agentName}] Purged queue ${queueName} to avoid stale messages`);
+        } catch (e) {
+          console.warn(`[${this.agentName}] Could not purge ${queueName} (may be empty/new)`);
+        }
 
         console.log(`✅ [${this.agentName}] Successfully bound to ${routingKey}`);
         return true;
@@ -303,6 +312,7 @@ export abstract class BaseAgent implements IAgent, AgentSpecification, AgentFlow
           (this.globalMemory as any).setDynamicSchedulingFlow(number, 'service-first');
         }
       } catch {}
+      // Reverter para comportamento anterior: iniciar por schedule.service
       nextAgentRoutingKey = 'schedule.service';
       console.log(`🔀 [${this.agentName}] Patient flow completed. Starting scheduling at ${nextAgentRoutingKey} for ${number}`);
     }
@@ -463,6 +473,11 @@ export abstract class BaseAgent implements IAgent, AgentSpecification, AgentFlow
       timestamp: payload.timestamp || TimeTimestampUnix.make(Math.floor(Date.now() / 1000)) as TimeTimestampUnix
     } as AgentActivationCommand;
 
+    // Guardar timestamp de ativação para filtrar mensagens antigas
+    try {
+      this.lastActivationTimestampByUser.set(payload.number, Number(activationCommand.timestamp as unknown as number));
+    } catch {}
+
     console.log(`🎯 [${this.agentName}] Activation command criado para ${payload.number}`);
     console.log(`🎯 [${this.agentName}] Received activation command for ${payload.number}`);
 
@@ -510,6 +525,14 @@ export abstract class BaseAgent implements IAgent, AgentSpecification, AgentFlow
 
     const number = message.number;
     const correlationId = message.correlationId || '';
+    const msgTs = Number(message.timestamp || 0);
+
+    // Ignorar mensagens mais antigas do que a ativação atual (backlog)
+    const lastActTs = this.lastActivationTimestampByUser.get(number);
+    if (lastActTs && msgTs && msgTs < lastActTs) {
+      console.log(`🕒 [${this.agentName}] Ignoring stale message (ts=${msgTs}) older than activation (ts=${lastActTs}) for ${number}`);
+      return;
+    }
 
     // Deduplicação simples por correlationId (TTL 15s)
     if (correlationId) {

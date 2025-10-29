@@ -168,7 +168,8 @@ export class SdkRabbitmq implements ISdkRabbitmq {
       await this.channel!.consume(queueName, async (msg: any) => {
         if (msg) {
           try {
-            console.log(`🔥 RAW MESSAGE RECEIVED - Queue: ${queueName}, Content: ${msg.content.toString()}`);
+            // Log focado em exchange/routing (não enfatiza a queue)
+            console.log(`🔥 MESSAGE RECEIVED - ${exchange}:${routingKey} :: ${msg.content.toString()}`);
             const content = JSON.parse(msg.content.toString());
             this.logger.debug('Message received', { exchange, queueName, routingKey, content });
             

@@ -6,7 +6,7 @@
 import { SdkRabbitmq } from '../sdk/SdkRabbitmq';
 import { IGlobalMemory } from '../memory/interfaces';
 import { UserMessage, AgentActivationPayload } from '../types/messages';
-import { AGENT_MESSAGES, SystemAgentName, SystemRoutingKey } from '../types/constants';
+import { SystemAgentName, SystemRoutingKey, AGENT_MESSAGES } from '../types/constants';
 import { TimeTimestampUnix } from '@tys/shared';
 
 export class GreetingAgent {
@@ -37,6 +37,7 @@ export class GreetingAgent {
     
     // LOG DIRETO: Mensagem chegou aqui!
     console.log(`🔥 MENSAGEM CHEGOU! Número: ${number}, Texto: "${message.text}", CorrelationId: ${message.correlationId}, Timestamp: ${message.timestamp}`);
+
     
     try {
       // Check if phone number exists in global memory clients list
@@ -52,6 +53,7 @@ export class GreetingAgent {
     }
   }
 
+
   // Handle new client interaction
   private async handleNewClient(number: string): Promise<void> {
     // Add client to global memory (thread-safe)
@@ -62,10 +64,20 @@ export class GreetingAgent {
       return;
     }
     
-    // Send welcome message to WhatsApp
-    await this.sendToWhatsApp(number, AGENT_MESSAGES.PATIENT_NAME.DEFAULT_SET);
-    
-    console.log(`GreetingAgent: New client ${number} added to system`);
+    // Enviar mensagem inicial de boas-vindas (primeiro prompt)
+    await this.sdkRabbitmq.publish('whatsapp.message.text', 'send', {
+      number,
+      text: AGENT_MESSAGES.PATIENT_NAME.REQUEST
+    });
+    console.log(`GreetingAgent: Welcome message sent to ${number}`);
+
+    // Evitar mensagem duplicada pelo PatientNameAgent: marcar como enviada para este agente
+    try {
+      (this.globalMemory as any).markMessageSentForAgent(number, 'patient.name');
+      console.log(`🔒 [GreetingAgent] MESSAGE_SENT marcado para patient.name em ${number}`);
+    } catch (err) {
+      console.warn('[GreetingAgent] Falha ao marcar MESSAGE_SENT para patient.name (prosseguindo):', err);
+    }
     
     // Activate the first agent in the flow sequence
     await this.activateFirstAgent(number);
@@ -73,9 +85,16 @@ export class GreetingAgent {
 
   // Handle existing client message routing
   private async handleExistingClient(number: string, message: UserMessage): Promise<void> {
-    // Para clientes existentes, apenas logar - os agentes individuais já estão conectados
-    // e processando mensagens diretamente via routing key phone.{number}
-    console.log(`GreetingAgent: Client ${number} already in flow, ignoring routing (agents handle messages directly)`);
+    // Encaminhar a mensagem para o agente atualmente ativo via canal interno por usuário
+    const currentStage = this.globalMemory.getCurrentStage(number) || this.globalMemory.getNextAgent(number);
+    if (!currentStage) {
+      console.log(`GreetingAgent: No current/next stage for ${number}, ignoring message`);
+      return;
+    }
+
+    // Publica a mensagem do usuário para a exchange interna 'agents' na rota agent.msg.{number}
+    await this.sdkRabbitmq.publish('agents', `agent.msg.${number}`, message);
+    console.log(`GreetingAgent: Routed user message from ${number} to agent.msg.${number}`);
   }
 
   // Activate the first agent in the flow
@@ -109,22 +128,11 @@ export class GreetingAgent {
       console.log(`🎯 [GreetingAgent] Publicando para exchange 'agents' com routing key '${firstAgentRoutingKey}'`);
 
       // Publish to first agent queue
-      await this.sdkRabbitmq.publish(SystemAgentName.make('agents'), SystemRoutingKey.make(firstAgentRoutingKey), payload);
+      await this.sdkRabbitmq.publish('agents', firstAgentRoutingKey, payload);
 
       console.log(`✅ [GreetingAgent] Ativação publicada com sucesso para ${firstAgentRoutingKey}`);
       console.log(`GreetingAgent: Activated first agent ${firstAgentRoutingKey} for ${number}`);
     }
   }
 
-  // Send message to WhatsApp
-  private async sendToWhatsApp(number: string, message: string): Promise<void> {
-    // GreetingAgent pode sempre enviar mensagens (não tem restrições de timing)
-    // Send message to WhatsApp
-    await this.sdkRabbitmq.publish('whatsapp.message.text', 'send', {
-      number: number,
-      text: message
-    });
-
-    console.log(`GreetingAgent: Message sent to ${number}: ${message}`);
-  }
 }

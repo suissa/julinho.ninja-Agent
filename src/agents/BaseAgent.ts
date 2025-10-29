@@ -21,6 +21,7 @@ export abstract class BaseAgent implements IAgent, AgentSpecification, AgentFlow
   // Controle de estado para evitar mensagens duplicadas
   private processingUsers: Set<string> = new Set();
   private lastMessageSent: Map<string, { message: string; timestamp: number }> = new Map();
+  private recentCorrelationIds: Map<string, number> = new Map(); // correlationId -> epochMs
 
   /**
    * Constructor for BaseAgent
@@ -127,14 +128,14 @@ export abstract class BaseAgent implements IAgent, AgentSpecification, AgentFlow
     
     if (canActivate) {
       try {
-        // Fazer bind na exchange="chatbot.messages" + routingKey="phone.{telefone}"
-        const queueName = `queue-${this.agentName}-${command.number}`;
-        const routingKey = `phone.${command.number}`;
+        // Ouvir mensagens de usuário em uma fila única por agente, via routing key wildcard
+        const queueName = `agent-msg-${this.agentName}`;
+        const routingKey = `agent.msg.*`;
 
-        console.log(`🔗 [${this.agentName}] Binding to exchange: chatbot.messages, queue: ${queueName}, routingKey: ${routingKey}`);
+        console.log(`🔗 [${this.agentName}] Binding to exchange: agents, queue: ${queueName}, routingKey: ${routingKey}`);
 
         await this.sdkRabbitmq.subscribe(
-          'chatbot.messages',
+          'agents',
           queueName,
           routingKey,
           (message: UserMessage) => this.handleUserMessage(message)
@@ -144,7 +145,7 @@ export abstract class BaseAgent implements IAgent, AgentSpecification, AgentFlow
         return true;
 
       } catch (error) {
-        console.error(`❌ [${this.agentName}] Failed to bind to phone.${command.number}:`, error);
+        console.error(`❌ [${this.agentName}] Failed to bind to agent.msg.*:`, error);
         return false;
       }
     }
@@ -168,21 +169,21 @@ export abstract class BaseAgent implements IAgent, AgentSpecification, AgentFlow
 
         console.log(`❌ [${this.agentName}] Invalid input from ${number} (attempt ${errorCount}/3)`);
 
-        // if (errorCount >= 3) {
-        //   // Usar valor padrão após 3 erros
-        //   const defaultValue = this.getDefaultValueForErrors();
-        //   console.log(`⚠️ [${this.agentName}] Max errors reached, using default: ${defaultValue}`);
+        if (errorCount >= 3) {
+          // Usar valor padrão após 3 erros
+          const defaultValue = this.getDefaultValueForErrors();
+          console.log(`⚠️ [${this.agentName}] Max errors reached, using default: ${defaultValue}`);
 
-        //   this.processInput(number, defaultValue);
-        //   await this.sendToWhatsApp(number, `Após 3 tentativas, definindo valor padrão. Continuando...`);
+          this.processInput(number, defaultValue);
+          await this.sendToWhatsApp(number, `Após 3 tentativas, definindo valor padrão. Continuando...`);
 
-        //   // Considerar como satisfeito com valor padrão
-        //   return await this.completeSatisfaction(number);
-        // } else {
-        //   // Solicitar nova tentativa
-        //   await this.sendToWhatsApp(number, `Informação inválida (tentativa ${errorCount}/3). ${this.getAgentMessage()}`);
-        //   return false;
-        // }
+          // Considerar como satisfeito com valor padrão
+          return await this.completeSatisfaction(number);
+        } else {
+          // Solicitar nova tentativa e AGUARDAR nova mensagem
+          await this.sendToWhatsApp(number, `Informação inválida (tentativa ${errorCount}/3). ${this.getAgentMessage()}`);
+          return false;
+        }
       }
 
       // 2. Processar entrada válida
@@ -207,14 +208,7 @@ export abstract class BaseAgent implements IAgent, AgentSpecification, AgentFlow
       await this.markStageAsVisitedSafe(number, this.routingKey);
       console.log(`✅ [${this.agentName}] Stage ${this.routingKey} marked as visited for ${number}`);
 
-      // 2. Fazer unbind da routingKey do telefone
-      const queueName = `queue-${this.agentName}-${number}`;
-      const routingKey = `phone.${number}`;
-
-      console.log(`🔓 [${this.agentName}] Unbinding from ${routingKey}`);
-      await this.sdkRabbitmq.unbind('chatbot.messages', queueName, routingKey);
-
-      // 3. Mover para próximo agent
+      // 2. Mover para próximo agent (fila única por agente permanece ligada)
       await this.moveToNextAgent(number);
 
       console.log(`🎯 [${this.agentName}] Satisfaction completed for ${number}`);
@@ -297,9 +291,21 @@ export abstract class BaseAgent implements IAgent, AgentSpecification, AgentFlow
       return;
     }
 
-    const nextAgentRoutingKey = this.getNextAgent(number);
+    let nextAgentRoutingKey = this.getNextAgent(number);
 
     console.log(`🔄 [${this.agentName}] Flow transition: ${this.routingKey} → ${nextAgentRoutingKey || 'COMPLETED'} for ${number}`);
+
+    // Se terminou o fluxo de patient.*, iniciar scheduling automaticamente
+    if (!nextAgentRoutingKey && this.routingKey === 'patient.email') {
+      try {
+        // Seta fluxo de scheduling padrão SERVICE_FIRST e define próximo stage
+        if ((this.globalMemory as any).setDynamicSchedulingFlow) {
+          (this.globalMemory as any).setDynamicSchedulingFlow(number, 'service-first');
+        }
+      } catch {}
+      nextAgentRoutingKey = 'schedule.service';
+      console.log(`🔀 [${this.agentName}] Patient flow completed. Starting scheduling at ${nextAgentRoutingKey} for ${number}`);
+    }
 
     if (nextAgentRoutingKey) {
       console.log(`🚀 [${this.agentName}] Moving to next agent: ${nextAgentRoutingKey}`);
@@ -331,14 +337,14 @@ export abstract class BaseAgent implements IAgent, AgentSpecification, AgentFlow
       const activationCommand: AgentActivationCommand = {
         number: number,
         sender: this.agentName,
-        timestamp: TimeTimestampUnix.make(Date.now() as TimeTimestampUnix)
+        timestamp: TimeTimestampUnix.make(Math.floor(Date.now() / 1000)) as TimeTimestampUnix
       };
 
       // 5. Pequeno delay para garantir que stage foi atualizado
       await new Promise(resolve => setTimeout(resolve, 100));
       
       // 6. Enviar comando para próximo agent
-      await this.sdkRabbitmq.publish('chatbot.agents', nextAgentRoutingKey, activationCommand);
+      await this.sdkRabbitmq.publish('agents', nextAgentRoutingKey, activationCommand);
 
       console.log(`✅ [${this.agentName}] Next agent ${nextAgentRoutingKey} activated for ${number}`);
     } else {
@@ -503,6 +509,18 @@ export abstract class BaseAgent implements IAgent, AgentSpecification, AgentFlow
     }
 
     const number = message.number;
+    const correlationId = message.correlationId || '';
+
+    // Deduplicação simples por correlationId (TTL 15s)
+    if (correlationId) {
+      const now = Date.now();
+      const seenAt = this.recentCorrelationIds.get(correlationId);
+      if (seenAt && now - seenAt < 15000) {
+        console.log(`🛑 [${this.agentName}] Duplicate correlationId ${correlationId} ignored for ${number}`);
+        return;
+      }
+      this.recentCorrelationIds.set(correlationId, now);
+    }
     const userInput = message.text.trim();
 
     // Verificar se já está processando para este usuário
@@ -601,12 +619,7 @@ export abstract class BaseAgent implements IAgent, AgentSpecification, AgentFlow
       // 4. Mark stage as visited
       this.globalMemory.markStageAsVisited(number, this.routingKey);
 
-      // 5. Unsubscribe from this phone (agent job done)
-      const queueName = `queue-${this.agentName}-${number}`;
-      const routingKey = `phone.${number}`;
-      await this.sdkRabbitmq.unbind('chatbot.messages', queueName, routingKey);
-
-      // 6. Activate next agent
+      // 5. Activate next agent (fila única por agente permanece ligada)
       await this.moveToNextAgent(number);
 
       console.log(`[${this.agentName}] Successfully completed processing for ${number}`);

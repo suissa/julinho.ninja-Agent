@@ -132,6 +132,20 @@ export class ChatBot {
       await this.sdkRabbitmq.publish('messages', 'test', { test: true } as any);
       await this.sdkRabbitmq.publish('whatsapp', 'test', { test: true } as any);
 
+      // Pre-bind queues to avoid missing the very first messages before subscribers start
+      await this.sdkRabbitmq.bind('chatbot.messages', 'greeting-agent-queue', 'phone.*');
+
+      // Agent activation queues on 'agents' exchange
+      await this.sdkRabbitmq.bind('agents', 'patient-name-agent-queue', 'patient.name');
+      await this.sdkRabbitmq.bind('agents', 'patient-cpf-agent-queue', 'patient.cpf');
+      await this.sdkRabbitmq.bind('agents', 'patient-birthdate-agent-queue', 'patient.birthDate');
+      await this.sdkRabbitmq.bind('agents', 'patient-email-agent-queue', 'patient.email');
+      await this.sdkRabbitmq.bind('agents', 'schedule-new-agent-queue', 'schedule.new');
+      await this.sdkRabbitmq.bind('agents', 'schedule-date-agent-queue', 'schedule.date');
+      await this.sdkRabbitmq.bind('agents', 'schedule-service-agent-queue', 'schedule.service');
+      await this.sdkRabbitmq.bind('agents', 'schedule-dentist-agent-queue', 'schedule.dentist');
+      await this.sdkRabbitmq.bind('agents', 'schedule-payment-agent-queue', 'schedule.payment');
+
       // Purge all existing messages from agent queues
       const agentQueues = [
         'greeting-agent-queue',
@@ -195,69 +209,88 @@ export class ChatBot {
   // Set up agent subscriptions
   private async setupAgentSubscriptions(): Promise<void> {
     // Subscribe patient data collection agents to their respective routing keys
+
+    console.log('🔗 [ChatBot] Subscribing to patient.name');
     await this.sdkRabbitmq.subscribe(
       'agents',
       'patient-name-agent-queue',
       'patient.name',
-      (payload: any) => this.patientNameAgent.onActivation(payload)
+      this.patientNameAgent.onActivation.bind(this.patientNameAgent)
     );
+    console.log('✅ [ChatBot] Subscribed to patient.name');
 
+    console.log('🔗 [ChatBot] Subscribing to patient.cpf');
     await this.sdkRabbitmq.subscribe(
       'agents',
       'patient-cpf-agent-queue',
       'patient.cpf',
-      (payload: any) => this.patientCPFAgent.onActivation(payload)
+      this.patientCPFAgent.onActivation.bind(this.patientCPFAgent)
     );
+    console.log('✅ [ChatBot] Subscribed to patient.cpf');
 
+    console.log('🔗 [ChatBot] Subscribing to patient.birthDate');
     await this.sdkRabbitmq.subscribe(
       'agents',
       'patient-birthdate-agent-queue',
         'patient.birthDate',
-      (payload: any) => this.patientBirthDateAgent.onActivation(payload)
+      this.patientBirthDateAgent.onActivation.bind(this.patientBirthDateAgent)
     );
+    console.log('✅ [ChatBot] Subscribed to patient.birthDate');
 
+    console.log('🔗 [ChatBot] Subscribing to patient.email');
     await this.sdkRabbitmq.subscribe(
       'agents',
       'patient-email-agent-queue',
       'patient.email',
-      (payload) => this.patientEmailAgent.onActivation(payload)
+      this.patientEmailAgent.onActivation.bind(this.patientEmailAgent)
     );
+    console.log('✅ [ChatBot] Subscribed to patient.email');
 
     // Subscribe scheduling agents to their respective routing keys
+    console.log('🔗 [ChatBot] Subscribing to schedule.new');
     await this.sdkRabbitmq.subscribe(
       'agents',
       'schedule-new-agent-queue',
       'schedule.new',
-      (payload) => this.scheduleNewAgent.onActivation(payload)
+      this.scheduleNewAgent.onActivation.bind(this.scheduleNewAgent)
     );
+    console.log('✅ [ChatBot] Subscribed to schedule.new');
 
+    console.log('🔗 [ChatBot] Subscribing to schedule.date');
     await this.sdkRabbitmq.subscribe(
         'agents',
       'schedule-date-agent-queue',
       'schedule.date',
-      (payload) => this.scheduleDateAgent.onActivation(payload)
+      this.scheduleDateAgent.onActivation.bind(this.scheduleDateAgent)
     );
+    console.log('✅ [ChatBot] Subscribed to schedule.date');
 
+    console.log('🔗 [ChatBot] Subscribing to schedule.service');
     await this.sdkRabbitmq.subscribe(
       'agents',
       'schedule-service-agent-queue',
       'schedule.service',
-      (payload) => this.scheduleServiceAgent.onActivation(payload)
+      this.scheduleServiceAgent.onActivation.bind(this.scheduleServiceAgent)
     );
+    console.log('✅ [ChatBot] Subscribed to schedule.service');
 
+    console.log('🔗 [ChatBot] Subscribing to schedule.dentist');
     await this.sdkRabbitmq.subscribe(
       'agents',
       'schedule-dentist-agent-queue',
       'schedule.dentist',
-      (payload) => this.scheduleDentistAgent.onActivation(payload)
+      this.scheduleDentistAgent.onActivation.bind(this.scheduleDentistAgent)
     );
+    console.log('✅ [ChatBot] Subscribed to schedule.dentist');
 
+    console.log('🔗 [ChatBot] Subscribing to schedule.payment');
     await this.sdkRabbitmq.subscribe(
       'agents',
       'schedule-payment-agent-queue',
       'schedule.payment',
-      (payload) => this.schedulePaymentAgent.onActivation(payload)
+      this.schedulePaymentAgent.onActivation.bind(this.schedulePaymentAgent)
     );
+    console.log('✅ [ChatBot] Subscribed to schedule.payment');
 
     this.logger.info('All agent subscriptions configured', { 
       patientAgents: 4, 

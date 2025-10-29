@@ -261,8 +261,8 @@ export class ScheduleServiceAgent extends BaseAgent {
         timestamp: Date.now()
       };
 
-      // Send command to next agent
-      await this.sdkRabbitmq.publish('chatbot.agents', nextAgentRoutingKey, activationCommand);
+      // Send command to next agent on the unified 'agents' exchange
+      await this.sdkRabbitmq.publish('agents', nextAgentRoutingKey, activationCommand);
 
       console.log(`✅ [${this.agentName}] Next agent ${nextAgentRoutingKey} activated for ${number}`);
 

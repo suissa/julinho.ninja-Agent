@@ -73,26 +73,9 @@ export class GreetingAgent {
 
   // Handle existing client message routing
   private async handleExistingClient(number: string, message: UserMessage): Promise<void> {
-    // Don't process the message text - just acknowledge and route
-    console.log(`GreetingAgent: Routing message from existing client ${number}`);
-    
-    // Get the next agent name from global memory flow
-    const currentStage = this.globalMemory.getCurrentStage(number);
-    
-    if (currentStage) {
-      // Create activation payload for current agent
-      const payload: AgentActivationPayload = {
-        number: number,
-        sender: 'GreetingAgent',
-        timestamp: TimeTimestampUnix.make(Math.floor(Date.now() / 1000)) as TimeTimestampUnix
-      };
-      
-      // Publish to current agent queue
-      await this.sdkRabbitmq.publish(SystemAgentName.make('agents'), SystemRoutingKey.make(currentStage), payload);
-      
-      // Não reenviar a mensagem automaticamente - deixar o agente processar diretamente
-      console.log(`GreetingAgent: Message forwarded to ${currentStage} for processing`);
-    }
+    // Para clientes existentes, apenas logar - os agentes individuais já estão conectados
+    // e processando mensagens diretamente via routing key phone.{number}
+    console.log(`GreetingAgent: Client ${number} already in flow, ignoring routing (agents handle messages directly)`);
   }
 
   // Activate the first agent in the flow

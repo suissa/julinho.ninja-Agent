@@ -168,21 +168,21 @@ export abstract class BaseAgent implements IAgent, AgentSpecification, AgentFlow
 
         console.log(`❌ [${this.agentName}] Invalid input from ${number} (attempt ${errorCount}/3)`);
 
-        if (errorCount >= 3) {
-          // Usar valor padrão após 3 erros
-          const defaultValue = this.getDefaultValueForErrors();
-          console.log(`⚠️ [${this.agentName}] Max errors reached, using default: ${defaultValue}`);
+        // if (errorCount >= 3) {
+        //   // Usar valor padrão após 3 erros
+        //   const defaultValue = this.getDefaultValueForErrors();
+        //   console.log(`⚠️ [${this.agentName}] Max errors reached, using default: ${defaultValue}`);
 
-          this.processInput(number, defaultValue);
-          await this.sendToWhatsApp(number, `Após 3 tentativas, definindo valor padrão. Continuando...`);
+        //   this.processInput(number, defaultValue);
+        //   await this.sendToWhatsApp(number, `Após 3 tentativas, definindo valor padrão. Continuando...`);
 
-          // Considerar como satisfeito com valor padrão
-          return await this.completeSatisfaction(number);
-        } else {
-          // Solicitar nova tentativa
-          await this.sendToWhatsApp(number, `Informação inválida (tentativa ${errorCount}/3). ${this.getAgentMessage()}`);
-          return false;
-        }
+        //   // Considerar como satisfeito com valor padrão
+        //   return await this.completeSatisfaction(number);
+        // } else {
+        //   // Solicitar nova tentativa
+        //   await this.sendToWhatsApp(number, `Informação inválida (tentativa ${errorCount}/3). ${this.getAgentMessage()}`);
+        //   return false;
+        // }
       }
 
       // 2. Processar entrada válida

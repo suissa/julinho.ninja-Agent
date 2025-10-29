@@ -99,22 +99,8 @@ export class ScheduleServiceAgent extends BaseAgent {
    * @returns true if input is valid and available service, false otherwise
    */
   validateInput(input: string): boolean {
-    if (!input || input.trim() === '') {
-      return false;
-    }
-
-    const trimmedInput = input.trim();
-    
-    // Check if input is a valid service ID
-    const serviceId = trimmedInput;
-    const service = this.availableServices.find(s => s.id === serviceId);
-    
-    if (!service) {
-      return false;
-    }
-
-    // Check if service is available
-    return service.available;
+    // Aceitar qualquer entrada não vazia (sem validação)
+    return !!(input && input.trim());
   }
 
   /**
@@ -168,22 +154,24 @@ export class ScheduleServiceAgent extends BaseAgent {
    */
   processInput(number: string, input: string): void {
     const selectedServiceId = input.trim();
-    const selectedService = this.getServiceById(selectedServiceId);
+    let selectedService = this.getServiceById(selectedServiceId);
     
     if (!selectedService) {
-      console.error(`[${this.agentName}] Service not found for ID: ${selectedServiceId}`);
-      return;
+      // Fallback para primeiro disponível (sem travar o fluxo)
+      const first = this.getAvailableServices()[0] || this.getAllServices()[0];
+      selectedService = first || { id: selectedServiceId, name: 'Serviço escolhido', description: 'N/A', price: 0, duration: 0, available: true } as any;
+      console.warn(`[${this.agentName}] Service not found for ID: ${selectedServiceId}. Using fallback: ${selectedService?.name || 'N/A'}`);
     }
 
-    // Store the selected service information
+    // Store the selected service information, handling possibly null selectedService
     this.globalMemory.setClientData(number, 'selectedServiceId', selectedServiceId);
-    this.globalMemory.setClientData(number, 'selectedServiceName', selectedService.name);
-    this.globalMemory.setClientData(number, 'selectedServiceDescription', selectedService.description);
-    this.globalMemory.setClientData(number, 'selectedServicePrice', selectedService.price);
-    this.globalMemory.setClientData(number, 'selectedServiceDuration', selectedService.duration);
-    this.globalMemory.setClientData(number, 'selectedServicePriceFormatted', this.formatPrice(selectedService.price));
+    this.globalMemory.setClientData(number, 'selectedServiceName', selectedService?.name ?? 'N/A');
+    this.globalMemory.setClientData(number, 'selectedServiceDescription', selectedService?.description ?? 'N/A');
+    this.globalMemory.setClientData(number, 'selectedServicePrice', selectedService?.price ?? 0);
+    this.globalMemory.setClientData(number, 'selectedServiceDuration', selectedService?.duration ?? 0);
+    this.globalMemory.setClientData(number, 'selectedServicePriceFormatted', this.formatPrice(selectedService?.price ?? 0));
 
-    console.log(`[${this.agentName}] User ${number} selected service: ${selectedService.name} - ${this.formatPrice(selectedService.price)}`);
+    console.log(`[${this.agentName}] User ${number} selected service: ${selectedService?.name ?? 'N/A'} - ${this.formatPrice(selectedService?.price ?? 0)}`);
   }
 
   /**

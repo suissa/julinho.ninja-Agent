@@ -47,22 +47,8 @@ export class ScheduleDentistAgent extends BaseAgent {
    * @returns true if input is valid and available dentist, false otherwise
    */
   validateInput(input: string): boolean {
-    if (!input || input.trim() === '') {
-      return false;
-    }
-
-    const trimmedInput = input.trim();
-    
-    // Check if input is a valid dentist ID (1-6)
-    const dentistId = trimmedInput;
-    const dentist = this.availableDentists.find(d => d.id === dentistId);
-    
-    if (!dentist) {
-      return false;
-    }
-
-    // Check if dentist is available
-    return dentist.available;
+    // Aceitar qualquer entrada não vazia (sem validação)
+    return !!(input && input.trim());
   }
 
   /**
@@ -107,11 +93,12 @@ export class ScheduleDentistAgent extends BaseAgent {
    */
   processInput(number: string, input: string): void {
     const selectedDentistId = input.trim();
-    const selectedDentist = this.getDentistById(selectedDentistId);
+    let selectedDentist = this.getDentistById(selectedDentistId);
     
     if (!selectedDentist) {
-      console.error(`[${this.agentName}] Dentist not found for ID: ${selectedDentistId}`);
-      return;
+      const first = this.getAvailableDentists()[0] || this.getAllDentists()[0];
+      selectedDentist = first || { id: selectedDentistId, name: 'Dentista escolhido', specialty: 'N/A', available: true } as any;
+      console.warn(`[${this.agentName}] Dentist not found for ID: ${selectedDentistId}. Using fallback: ${selectedDentist.name}`);
     }
 
     // Store the selected dentist information
@@ -194,11 +181,11 @@ export class ScheduleDentistAgent extends BaseAgent {
       const activationCommand = {
         number: number,
         sender: this.agentName,
-        timestamp: Date.now()
+        timestamp: Math.floor(Date.now() / 1000)
       };
 
-      // Send command to next agent
-      await this.sdkRabbitmq.publish('chatbot.agents', nextAgentRoutingKey, activationCommand);
+      // Send command to next agent (exchange correto)
+      await this.sdkRabbitmq.publish('agents', nextAgentRoutingKey, activationCommand);
 
       console.log(`✅ [${this.agentName}] Next agent ${nextAgentRoutingKey} activated for ${number}`);
 

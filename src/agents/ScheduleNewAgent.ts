@@ -177,15 +177,15 @@ export class ScheduleNewAgent extends BaseAgent {
         return;
       }
 
-      // Create activation command
+      // Create activation command (timestamp em segundos)
       const activationCommand = {
         number: number,
         sender: this.agentName,
-        timestamp: Date.now()
+        timestamp: Math.floor(Date.now() / 1000)
       };
 
-      // Send command to next agent
-      await this.sdkRabbitmq.publish('chatbot.agents', nextAgentRoutingKey, activationCommand);
+      // Send command to next agent no exchange correto
+      await this.sdkRabbitmq.publish('agents', nextAgentRoutingKey, activationCommand);
 
       console.log(`✅ [${this.agentName}] Next agent ${nextAgentRoutingKey} activated for ${number}`);
 

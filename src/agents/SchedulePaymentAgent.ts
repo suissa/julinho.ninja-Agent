@@ -93,22 +93,8 @@ export class SchedulePaymentAgent extends BaseAgent {
    * @returns true if input is valid and available payment method, false otherwise
    */
   validateInput(input: string): boolean {
-    if (!input || input.trim() === '') {
-      return false;
-    }
-
-    const trimmedInput = input.trim();
-    
-    // Check if input is a valid payment method ID
-    const paymentId = trimmedInput;
-    const paymentMethod = this.paymentMethods.find(p => p.id === paymentId);
-    
-    if (!paymentMethod) {
-      return false;
-    }
-
-    // Check if payment method is available
-    return paymentMethod.available;
+    // Aceitar qualquer entrada não vazia (sem validação)
+    return !!(input && input.trim());
   }
 
   /**
@@ -201,11 +187,12 @@ Obrigado por escolher nossa clínica! 😊
    */
   processInput(number: string, input: string): void {
     const selectedPaymentId = input.trim();
-    const selectedPayment = this.getPaymentMethodById(selectedPaymentId);
+    let selectedPayment = this.getPaymentMethodById(selectedPaymentId);
     
     if (!selectedPayment) {
-      console.error(`[${this.agentName}] Payment method not found for ID: ${selectedPaymentId}`);
-      return;
+      const first = this.getAvailablePaymentMethods()[0] || this.paymentMethods[0];
+      selectedPayment = first || { id: selectedPaymentId, name: 'Pagamento escolhido', description: 'N/A', available: true } as any;
+      console.warn(`[${this.agentName}] Payment method not found for ID: ${selectedPaymentId}. Using fallback: ${selectedPayment.name}`);
     }
 
     try {

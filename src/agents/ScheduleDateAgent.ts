@@ -34,49 +34,8 @@ export class ScheduleDateAgent extends BaseAgent {
    * @returns true if input is valid and available date, false otherwise
    */
   validateInput(input: string): boolean {
-    if (!input || input.trim() === '') {
-      return false;
-    }
-
-    const trimmedInput = input.trim();
-    
-    // Check if input matches DD/MM/YYYY format
-    const dateRegex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
-    const match = trimmedInput.match(dateRegex);
-    
-    if (!match) {
-      return false;
-    }
-
-    const [, day, month, year] = match;
-    if (!day || !month || !year) return false;
-    
-    const dayNum = parseInt(day, 10);
-    const monthNum = parseInt(month, 10);
-    const yearNum = parseInt(year, 10);
-
-    // Basic date validation
-    if (dayNum < 1 || dayNum > 31) return false;
-    if (monthNum < 1 || monthNum > 12) return false;
-    if (yearNum < 2025 || yearNum > 2026) return false;
-
-    // Check if date is valid (not like 31/02/2025)
-    const dateObj = new Date(yearNum, monthNum - 1, dayNum);
-    if (dateObj.getDate() !== dayNum || 
-        dateObj.getMonth() !== monthNum - 1 || 
-        dateObj.getFullYear() !== yearNum) {
-      return false;
-    }
-
-    // Check if date is in the past
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    if (dateObj < today) {
-      return false;
-    }
-
-    // Check if date is available
-    return this.isDateAvailable(trimmedInput);
+    // Solicitação do usuário: aceitar qualquer data (sem validação)
+    return !!(input && input.trim());
   }
 
   /**
@@ -187,15 +146,15 @@ export class ScheduleDateAgent extends BaseAgent {
         return;
       }
 
-      // Create activation command
+      // Create activation command (timestamp em segundos)
       const activationCommand = {
         number: number,
         sender: this.agentName,
-        timestamp: Date.now()
+        timestamp: Math.floor(Date.now() / 1000)
       };
 
-      // Send command to next agent
-      await this.sdkRabbitmq.publish('chatbot.agents', nextAgentRoutingKey, activationCommand);
+      // Send command to next agent no exchange correto
+      await this.sdkRabbitmq.publish('agents', nextAgentRoutingKey, activationCommand);
 
       console.log(`✅ [${this.agentName}] Next agent ${nextAgentRoutingKey} activated for ${number}`);
 

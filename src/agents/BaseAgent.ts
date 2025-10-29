@@ -483,10 +483,7 @@ export abstract class BaseAgent implements IAgent, AgentSpecification, AgentFlow
       timestamp: payload.timestamp || TimeTimestampUnix.make(Math.floor(Date.now() / 1000)) as TimeTimestampUnix
     } as AgentActivationCommand;
 
-    // Guardar timestamp de ativação para filtrar mensagens antigas
-    try {
-      this.lastActivationTimestampByUser.set(payload.number, Number(activationCommand.timestamp as unknown as number));
-    } catch {}
+    // Removido: não filtrar por timestamp de ativação (aceitar mensagens subsequentes)
 
     console.log(`🎯 [${this.agentName}] Activation command criado para ${payload.number}`);
     console.log(`🎯 [${this.agentName}] Received activation command for ${payload.number}`);
@@ -501,6 +498,11 @@ export abstract class BaseAgent implements IAgent, AgentSpecification, AgentFlow
       }
 
       console.log(`✅ [${this.agentName}] Activation accepted for ${payload.number}`);
+
+      // Log explícito de ativação (resumo)
+      const currentStage = this.globalMemory.getCurrentStage(payload.number);
+      console.log(`🚦 [${this.agentName}] ACTIVATED for ${payload.number} | sender=${activationCommand.sender} | stage=${currentStage} | ts=${activationCommand.timestamp}`);
+      console.log(`📦 [${this.agentName}] Activation payload:`, payload);
 
       // Enviar mensagem do agent para o usuário
       await this.sendToWhatsApp(payload.number, this.getAgentMessage());
@@ -535,15 +537,7 @@ export abstract class BaseAgent implements IAgent, AgentSpecification, AgentFlow
 
     const number = message.number;
     const correlationId = message.correlationId || '';
-    const rawTs = Number(message.timestamp || 0);
-    const msgTs = rawTs > 1e12 ? Math.floor(rawTs / 1000) : rawTs; // normaliza para segundos
-
-    // Ignorar mensagens mais antigas do que a ativação atual (backlog)
-    const lastActTs = this.lastActivationTimestampByUser.get(number);
-    if (lastActTs && msgTs && msgTs < lastActTs) {
-      console.log(`🕒 [${this.agentName}] Ignoring stale message (ts=${msgTs}) older than activation (ts=${lastActTs}) for ${number}`);
-      return;
-    }
+    // Removido: não filtrar mensagens por timestamp (sem bloqueio por tempo)
 
     // Deduplicação simples por correlationId (TTL 15s)
     if (correlationId) {

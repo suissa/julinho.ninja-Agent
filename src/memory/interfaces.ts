@@ -46,7 +46,10 @@ export interface IGlobalMemory {
   
   // Limpa toda a memória global
   clear(): void;
-  
+
+  // Clear all session files
+  clearAllSessions(): Promise<void>;
+
   // Reinicia o fluxo de agentes para um cliente específico
   resetAgentsFlow(): void;
   resetToPatientDataFlow(): void;

@@ -12,7 +12,8 @@
     "test:watch": "jest --watch",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
-    "clean": "rimraf dist"
+    "clean": "rimraf dist",
+    "tui:workflow": "ts-node src/tui/companyWorkflowTui.ts"
   },
   "keywords": [
     "whatsapp",
